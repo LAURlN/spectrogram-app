@@ -238,6 +238,7 @@
     DOM.returnToSpectrogramBtn = document.getElementById('returnToSpectrogramBtn');
     DOM.spectrogramView = document.getElementById('spectrogramView');
     DOM.game2View = document.getElementById('game2View');
+    DOM.spectrogramHeaderActions = document.getElementById('spectrogramHeaderActions');
   }
 
   function setupCanvases() {
@@ -592,6 +593,9 @@
     if (mode === 'spectrogram') {
       if (DOM.spectrogramView) DOM.spectrogramView.classList.remove('hidden');
       if (DOM.game2View) DOM.game2View.classList.add('hidden');
+      if (DOM.spectrogramHeaderActions) DOM.spectrogramHeaderActions.classList.remove('hidden');
+      if (DOM.micStatus) DOM.micStatus.classList.remove('hidden');
+      if (DOM.pitchTunerHud) DOM.pitchTunerHud.classList.toggle('hidden', !config.showTunerHUD);
 
       if (DOM.selectSpectrogramBtn) {
         DOM.selectSpectrogramBtn.classList.add('active');
@@ -605,8 +609,16 @@
       }
       setTimeout(resizeCanvases, 100);
     } else if (mode === 'game2') {
+      // Pause audio processing & release mic hardware
+      if (isRunning) {
+        stopMicrophone();
+      }
+
       if (DOM.spectrogramView) DOM.spectrogramView.classList.add('hidden');
       if (DOM.game2View) DOM.game2View.classList.remove('hidden');
+      if (DOM.spectrogramHeaderActions) DOM.spectrogramHeaderActions.classList.add('hidden');
+      if (DOM.micStatus) DOM.micStatus.classList.add('hidden');
+      if (DOM.pitchTunerHud) DOM.pitchTunerHud.classList.add('hidden');
 
       if (DOM.selectSpectrogramBtn) {
         DOM.selectSpectrogramBtn.classList.remove('active');
