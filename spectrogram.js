@@ -2775,26 +2775,48 @@
     return Math.max(0, Math.min(1, cosineSim));
   }
 
-  function extractFastPitchAndNote(frame) {
+  let cachedRefMaxDb = null;
+  function getClipActiveThreshold(refSpectra) {
+    if (!refSpectra || refSpectra.length === 0) return -75;
+    if (cachedRefMaxDb === null) {
+      let maxP = -160;
+      for (let i = 0; i < refSpectra.length; i++) {
+        const p = extractFramePeakEnergy(refSpectra[i]);
+        if (p > maxP) maxP = p;
+      }
+      cachedRefMaxDb = Math.max(-80, maxP);
+    }
+    return Math.max(-85, cachedRefMaxDb - 32);
+  }
+
+  function getCurrentSampleRate() {
+    if (audioCtx && audioCtx.sampleRate) return audioCtx.sampleRate;
+    return sampleRate || 44100;
+  }
+
+  function extractFastPitchAndNote(frame, activeThreshold) {
     if (!frame || frame.length === 0) return { freq: 0, note: '---', isPercussive: false, energy: -100 };
 
-    let maxDb = -100;
-    let maxBin = 0;
-    let totalEnergy = 0;
-    const nyquist = sampleRate / 2;
+    const sr = getCurrentSampleRate();
+    const nyquist = sr / 2;
     const numBins = frame.length;
     const searchMaxBin = Math.floor((4000 / nyquist) * numBins);
 
+    let maxDb = -160;
+    let maxBin = 0;
+    let totalEnergy = 0;
+
     for (let i = 2; i < searchMaxBin; i++) {
       const db = frame[i];
-      if (db > -90) totalEnergy += Math.pow(10, db / 20);
+      if (db > -95) totalEnergy += Math.pow(10, db / 20);
       if (db > maxDb) {
         maxDb = db;
         maxBin = i;
       }
     }
 
-    if (maxDb < -65) {
+    const threshold = activeThreshold !== undefined ? activeThreshold : -75;
+    if (maxDb < threshold) {
       return { freq: 0, note: '---', isPercussive: false, energy: maxDb };
     }
 
@@ -2810,7 +2832,7 @@
       }
     }
 
-    const freq = Math.round(exactBin * (sampleRate / (numBins * 2)));
+    const freq = Math.round(exactBin * (sr / (numBins * 2)));
 
     let harmonicEnergy = 0;
     for (let h = -2; h <= 2; h++) {
@@ -2819,7 +2841,7 @@
     }
 
     const tonalityRatio = totalEnergy > 0 ? (harmonicEnergy / totalEnergy) : 0;
-    const isPitched = tonalityRatio > 0.22 && freq >= 50 && freq <= 3500;
+    const isPitched = tonalityRatio > 0.20 && freq >= 50 && freq <= 3500;
 
     if (isPitched) {
       const note = freqToNote(freq);
@@ -2831,22 +2853,22 @@
 
   function extractFramePeakEnergy(frame) {
     if (!frame) return -100;
-    let maxDb = -100;
+    let maxDb = -160;
     for (let i = 0; i < frame.length; i++) {
       if (frame[i] > maxDb) maxDb = frame[i];
     }
     return maxDb;
   }
 
-  function computeAdvancedMusicalMatch(attFrame, refFrame) {
+  function computeAdvancedMusicalMatch(attFrame, refFrame, activeThreshold) {
     if (!attFrame || !refFrame) return 0;
 
-    const refInfo = extractFastPitchAndNote(refFrame);
-    const attInfo = extractFastPitchAndNote(attFrame);
+    const threshold = activeThreshold !== undefined ? activeThreshold : -75;
+    const refInfo = extractFastPitchAndNote(refFrame, threshold);
+    const attInfo = extractFastPitchAndNote(attFrame, threshold);
 
-    const silenceThreshold = -65;
-    const refActive = refInfo.energy > silenceThreshold;
-    const attActive = attInfo.energy > silenceThreshold;
+    const refActive = refInfo.energy > threshold;
+    const attActive = attInfo.energy > threshold;
 
     if (!refActive && !attActive) {
       return null;
@@ -2864,9 +2886,8 @@
     if (refInfo.isPercussive || refInfo.freq === 0) {
       const shapeSim = computeSpectralSimilarity(attFrame, refFrame);
       const energyDiff = Math.abs(refInfo.energy - attInfo.energy);
-      const energyScore = Math.max(0, 1 - (energyDiff / 30));
+      const energyScore = Math.max(0, 1 - (energyDiff / 35));
 
-      // Up to 100% (1.0) score for hitting all drum strikes on time with matching timbre & volume!
       const drumScore = (shapeSim * 0.70) + (energyScore * 0.30);
       return Math.max(0.0, Math.min(1.0, drumScore));
     }
@@ -2876,16 +2897,16 @@
       const centsDiff = Math.abs(1200 * Math.log2(attInfo.freq / refInfo.freq));
 
       let pitchScore = 0;
-      if (centsDiff <= 25) {
+      if (centsDiff <= 35) {
         pitchScore = 1.0;
-      } else if (centsDiff <= 50) {
-        pitchScore = 0.92;
-      } else if (centsDiff <= 100) {
-        pitchScore = 0.78;
-      } else if (centsDiff <= 200) {
-        pitchScore = 0.45;
-      } else if (centsDiff <= 400) {
-        pitchScore = 0.20;
+      } else if (centsDiff <= 65) {
+        pitchScore = 0.90;
+      } else if (centsDiff <= 120) {
+        pitchScore = 0.75;
+      } else if (centsDiff <= 250) {
+        pitchScore = 0.40;
+      } else if (centsDiff <= 450) {
+        pitchScore = 0.15;
       } else {
         pitchScore = 0.05;
       }
@@ -2900,15 +2921,15 @@
   }
 
   function scaleToFullRangeScore(rawScore) {
-    if (rawScore <= 0.20) return 0.0;
+    if (rawScore <= 0.18) return 0.0;
 
-    const normalized = (rawScore - 0.20) / (0.78 - 0.20);
+    const normalized = (rawScore - 0.18) / (0.76 - 0.18);
     const clamped = Math.max(0.0, Math.min(1.0, normalized));
 
-    let scaled = Math.pow(clamped, 1.3);
+    let scaled = Math.pow(clamped, 1.25);
 
-    if (clamped >= 0.75) {
-      scaled = 0.78 + (clamped - 0.75) * 0.88;
+    if (clamped >= 0.72) {
+      scaled = 0.75 + (clamped - 0.72) * 0.89;
     }
 
     return Math.max(0.0, Math.min(1.0, scaled));
@@ -2922,6 +2943,7 @@
 
     const nRef = refSpectra.length;
     const nAtt = attSpectra.length;
+    const activeThreshold = getClipActiveThreshold(refSpectra);
 
     // Search range: -15 frames to +70 frames (up to ~1000ms mobile/bluetooth latency)
     const minShift = -15;
@@ -2939,7 +2961,7 @@
         const attIdx = Math.floor(attProgress * nAtt);
 
         if (attIdx >= 0 && attIdx < nAtt) {
-          const matchScore = computeAdvancedMusicalMatch(attSpectra[attIdx], refSpectra[t]);
+          const matchScore = computeAdvancedMusicalMatch(attSpectra[attIdx], refSpectra[t], activeThreshold);
           if (matchScore !== null) {
             sumScore += matchScore;
             count++;
@@ -3106,16 +3128,17 @@
 
       // Calculate Real-time Pitch & Rhythm Match against reference clip frame & Update Live HUD Note Badges!
       if (g2State.refSpectra.length > 0) {
+        const activeThreshold = getClipActiveThreshold(g2State.refSpectra);
         const frameIndex = Math.min(g2State.refSpectra.length - 1, Math.floor(sweepProgress * g2State.refSpectra.length));
         const refFrame = g2State.refSpectra[frameIndex];
 
-        const refInfo = extractFastPitchAndNote(refFrame);
-        const attInfo = extractFastPitchAndNote(liveFrequencyData);
+        const refInfo = extractFastPitchAndNote(refFrame, activeThreshold);
+        const attInfo = extractFastPitchAndNote(liveFrequencyData, activeThreshold);
 
         if (DOM.targetNoteBadge) DOM.targetNoteBadge.textContent = `Target: ${refInfo.note}`;
         if (DOM.attemptNoteBadge) DOM.attemptNoteBadge.textContent = `Your Note: ${attInfo.note}`;
 
-        const match = computeAdvancedMusicalMatch(liveFrequencyData, refFrame);
+        const match = computeAdvancedMusicalMatch(liveFrequencyData, refFrame, activeThreshold);
         if (match !== null) {
           g2State.matchScores.push(match);
           const avgRaw = g2State.matchScores.reduce((a, b) => a + b, 0) / g2State.matchScores.length;
