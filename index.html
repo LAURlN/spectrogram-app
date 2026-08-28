@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time 2D Spectrogram Audio Visualizer</title>
+  <meta name="description" content="High-performance real-time 2D audio spectrogram visualizer with microphone input, customizable colormaps, logarithmic frequency scaling, and musical pitch detection.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 12V15M8 9V18M12 4V20M16 8V17M20 11V14" stroke="url(#logo_grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs>
+              <linearGradient id="logo_grad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#00F0FF"/>
+                <stop offset="0.5" stop-color="#7000FF"/>
+                <stop offset="1" stop-color="#FF007A"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1>AudioSpectra <span>2D</span></h1>
+      </div>
+
+      <div class="header-center">
+        <div class="mic-status-badge idled" id="micStatus">
+          <span class="status-dot"></span>
+          <span class="status-text" id="statusText">Microphone Idle</span>
+        </div>
+        <div class="audio-level-meter" title="Audio Input Level">
+          <span class="meter-label">MIC</span>
+          <div class="meter-bar-container">
+            <div class="meter-bar-fill" id="meterBar"></div>
+          </div>
+          <span class="meter-value" id="meterValue">-∞ dB</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-primary" id="toggleMicBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+          <span id="toggleMicBtnText">Start Microphone</span>
+        </button>
+        <button class="btn btn-accent" id="calibrateBtn" title="Run 5-second Beatbox & Audio Calibration Wizard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="6"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+          </svg>
+          <span>Calibrate Mic (5s)</span>
+        </button>
+        <button class="btn btn-secondary" id="freezeBtn" disabled title="Freeze / Pause Spectrogram">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="6" y="4" width="4" height="16"></rect>
+            <rect x="14" y="4" width="4" height="16"></rect>
+          </svg>
+          <span>Freeze</span>
+        </button>
+        <button class="btn btn-secondary active" id="toggleSidebarBtn" title="Collapse / Expand Settings Panel (Left Sidebar)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <path d="M9 3v18"></path>
+          </svg>
+          <span>⚙️ Settings</span>
+        </button>
+        <button class="btn btn-secondary" id="exportBtn" title="Export Spectrogram Image (PNG)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Export Image</span>
+        </button>
+        <button class="btn btn-secondary active" id="togglePianoPanelBtn" title="Collapse / Expand Reference Piano Panel (Right Sidebar)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+            <line x1="6" y1="5" x2="6" y2="13"></line>
+            <line x1="10" y1="5" x2="10" y2="13"></line>
+            <line x1="14" y1="5" x2="14" y2="13"></line>
+            <line x1="18" y1="5" x2="18" y2="13"></line>
+          </svg>
+          <span>🎹 Side Piano</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="app-main">
+      <!-- Sidebar Control Panel -->
+      <aside class="control-panel">
+        <div class="panel-section">
+          <h2>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            </svg>
+            Audio Source
+          </h2>
+          
+          <div class="control-group">
+            <label for="audioDeviceSelect">Input Device</label>
+            <select id="audioDeviceSelect" class="form-select">
+              <option value="">Default Microphone</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="fftSizeSelect">FFT Size (Resolution)</label>
+            <select id="fftSizeSelect" class="form-select">
+              <option value="512">512 bins (Fast)</option>
+              <option value="1024">1024 bins</option>
+              <option value="2048">2048 bins (Balanced)</option>
+              <option value="4096">4096 bins (High detail)</option>
+              <option value="8192" selected>8192 bins (Ultra Maximum Resolution)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="label-with-value">
+              <label for="smoothingRange">Time Smoothing</label>
+              <span id="smoothingVal" class="val-badge">0.50</span>
+            </div>
+            <input type="range" id="smoothingRange" min="0" max="0.95" step="0.05" value="0.5">
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h2>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            Display & Scale
+          </h2>
+
+          <div class="control-group">
+            <label for="colormapSelect">Color Palette</label>
+            <select id="colormapSelect" class="form-select">
+              <option value="ultra_contrast" selected>Ultra Dynamic Contrast (Multi-Color Bands)</option>
+              <option value="volcano_contrast">Volcano Flame (High Dynamic Fire)</option>
+              <option value="cyberpunk">Cyberpunk Neon</option>
+              <option value="viridis">Viridis (Standard Scientific)</option>
+              <option value="inferno">Inferno (High Contrast Fire)</option>
+              <option value="plasma">Plasma (Vibrant Purple-Yellow)</option>
+              <option value="magma">Magma (Dark Pink)</option>
+              <option value="matrix">Matrix Code Green</option>
+              <option value="rainbow">Spectrum Rainbow</option>
+              <option value="grayscale">Grayscale Monochromatic</option>
+            </select>
+            <div class="colormap-preview" id="colormapPreview"></div>
+          </div>
+
+          <div class="control-group">
+            <label for="volumeCurveSelect">Volume Contrast Curve</label>
+            <select id="volumeCurveSelect" class="form-select">
+              <option value="steep" selected>Steep S-Curve (Clear Soft / Mid / Loud Bands)</option>
+              <option value="super_sharp">Discrete Stepped Bands (High Visual Separation)</option>
+              <option value="smooth">Smooth Continuous Gradient</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="scaleSelect">Frequency Scale</label>
+            <select id="scaleSelect" class="form-select">
+              <option value="logarithmic" selected>Logarithmic (Musical / Human Hearing)</option>
+              <option value="mel">Mel Scale (Perceptual Pitch)</option>
+              <option value="linear">Linear (Constant Hz step)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="label-with-value">
+              <label for="maxFreqSelect">Frequency Range Upper Bound</label>
+              <span id="maxFreqVal" class="val-badge">8 kHz</span>
+            </div>
+            <select id="maxFreqSelect" class="form-select">
+              <option value="22050">Full Spectrum (~22 kHz)</option>
+              <option value="12000">12 kHz (Voice / Instruments)</option>
+              <option value="8000" selected>8 kHz (Talking Voice Spectrum - Default)</option>
+              <option value="4000">4 kHz (Fundamental Voice Range)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <div class="label-with-value">
+              <label for="speedRange">Scroll Speed</label>
+              <span id="speedVal" class="val-badge">2 px/frame</span>
+            </div>
+            <input type="range" id="speedRange" min="1" max="6" step="1" value="2">
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h2>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Signal Processing
+          </h2>
+
+          <div class="calibration-card" id="calibrationCard">
+            <div class="cal-card-header">
+              <span class="cal-title">Microphone Calibration Profile</span>
+              <span class="badge-calibrated" id="calStatusBadge">UNSET</span>
+            </div>
+            <p class="cal-desc" id="calDescText">Run the 5-second calibration wizard while making beatbox sounds to automatically map kicks, hi-hats, vocal bass, and quiet pauses.</p>
+            <button class="btn btn-secondary btn-sm" id="runCalibBtn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+              </svg>
+              <span>Start 5s Beatbox Calibration</span>
+            </button>
+            <div class="cal-details hidden" id="calDetails">
+              <div class="cal-detail-row"><span>Ambient Noise Gate:</span> <strong id="calGateVal">-72.0 dB</strong></div>
+              <div class="cal-detail-row"><span>Beatbox Dynamic Range:</span> <strong id="calRangeVal">54.2 dB</strong></div>
+              <div class="cal-detail-row"><span>Peak Gain Boost:</span> <strong id="calGainVal">1.8x</strong></div>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="label-with-value">
+              <label for="noteSensRange">Note Recognition Sensitivity</label>
+              <span id="noteSensVal" class="val-badge">Balanced (3/5)</span>
+            </div>
+            <input type="range" id="noteSensRange" min="1" max="5" step="1" value="3">
+          </div>
+
+          <div class="control-group">
+            <label for="tunerToleranceSelect">Tuning Accuracy Window</label>
+            <select id="tunerToleranceSelect" class="form-select">
+              <option value="35" selected>Loose Vocal / Beatbox (±35 cents - Default)</option>
+              <option value="45">Max Loose (±45 cents - Extremely Forgiving)</option>
+              <option value="25">Standard (±25 cents)</option>
+              <option value="15">Strict Instrument (±15 cents)</option>
+            </select>
+          </div>
+
+          <!-- 3-Band Equalizer (EQ) -->
+          <div class="eq-section">
+            <span class="eq-title">3-Band Hardware Equalizer (EQ)</span>
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="eqLowRange">Low Bass (250 Hz)</label>
+                <span id="eqLowVal" class="val-badge">0 dB</span>
+              </div>
+              <input type="range" id="eqLowRange" min="-12" max="12" step="1" value="0">
+            </div>
+
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="eqMidRange">Mid Range (1 kHz)</label>
+                <span id="eqMidVal" class="val-badge">0 dB</span>
+              </div>
+              <input type="range" id="eqMidRange" min="-12" max="12" step="1" value="0">
+            </div>
+
+            <div class="control-group">
+              <div class="label-with-value">
+                <label for="eqHighRange">High Treble (4 kHz)</label>
+                <span id="eqHighVal" class="val-badge">0 dB</span>
+              </div>
+              <input type="range" id="eqHighRange" min="-12" max="12" step="1" value="0">
+            </div>
+          </div>
+
+          <div class="control-group">
+            <div class="label-with-value">
+              <label for="gainRange">Sensitivity / Gain</label>
+              <span id="gainVal" class="val-badge">1.0x</span>
+            </div>
+            <input type="range" id="gainRange" min="0.2" max="5.0" step="0.1" value="1.0">
+          </div>
+
+          <div class="control-group">
+            <div class="label-with-value">
+              <label for="noiseGateRange">Noise Floor Threshold</label>
+              <span id="noiseGateVal" class="val-badge">-90 dB</span>
+            </div>
+            <input type="range" id="noiseGateRange" min="-100" max="-30" step="1" value="-90">
+          </div>
+
+          <div class="control-group">
+            <div class="label-with-value">
+              <label for="contrastRange">Contrast / Gamma</label>
+              <span id="contrastVal" class="val-badge">1.2</span>
+            </div>
+            <input type="range" id="contrastRange" min="0.5" max="3.0" step="0.1" value="1.2">
+          </div>
+
+          <div class="control-group checkbox-group">
+            <label class="custom-checkbox">
+              <input type="checkbox" id="showOscilloscope" checked>
+              <span class="checkbox-box"></span>
+              <span>Show Waveform Oscilloscope Overlay</span>
+            </label>
+          </div>
+
+          <div class="control-group checkbox-group">
+            <label class="custom-checkbox">
+              <input type="checkbox" id="showSpectrumBar" checked>
+              <span class="checkbox-box"></span>
+              <span>Show Real-Time FFT Spectrum Bar</span>
+            </label>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Visualizer Viewport -->
+      <section class="visualizer-container" id="visualizerContainer">
+        <!-- Frequency Y-Axis Labels -->
+        <div class="y-axis-container" id="yAxisContainer">
+          <!-- Dynamic Hz ticks will be injected here -->
+        </div>
+
+        <!-- Main Display Viewport -->
+        <div class="canvas-wrapper" id="canvasWrapper">
+          <canvas id="spectrogramCanvas"></canvas>
+          <canvas id="overlayCanvas"></canvas>
+
+          <!-- Interactive Hover Inspector Tooltip -->
+          <div class="inspector-tooltip" id="inspectorTooltip">
+            <div class="tooltip-row"><span class="tooltip-key">Freq:</span> <span class="tooltip-val" id="tooltipFreq">0 Hz</span></div>
+            <div class="tooltip-row"><span class="tooltip-key">Note:</span> <span class="tooltip-val highlight" id="tooltipNote">---</span></div>
+            <div class="tooltip-row"><span class="tooltip-key">Level:</span> <span class="tooltip-val" id="tooltipDb">-∞ dB</span></div>
+            <div class="tooltip-row"><span class="tooltip-key">Time:</span> <span class="tooltip-val" id="tooltipTime">0.0 s</span></div>
+          </div>
+
+          <!-- Real-Time Pitch Detection & Musical Tuner HUD -->
+          <div class="pitch-tuner-hud" id="pitchTunerHud">
+            <div class="tuner-top-row">
+              <div class="tuner-left">
+                <div class="tuner-note-badge" id="tunerNoteBadge">---</div>
+                <div class="tuner-freq-info">
+                  <span class="tuner-freq-val" id="tunerFreqVal">0.0 Hz</span>
+                  <span class="tuner-target-val" id="tunerTargetVal">Ref: --- Hz</span>
+                </div>
+              </div>
+
+              <div class="tuner-center">
+                <div class="tuner-needle-container">
+                  <div class="tuner-ticks">
+                    <span>-50c</span>
+                    <span>-25c</span>
+                    <span class="center-tick">0</span>
+                    <span>+25c</span>
+                    <span>+50c</span>
+                  </div>
+                  <div class="tuner-track">
+                    <div class="tuner-center-mark"></div>
+                    <div class="tuner-needle" id="tunerNeedle"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tuner-right">
+                <div class="tuner-status-badge listening" id="tunerStatusBadge">LISTENING...</div>
+              </div>
+            </div>
+
+            <!-- Polyphonic Multi-Note Pills Container -->
+            <div class="multi-note-bar" id="multiNoteBar">
+              <span class="multi-note-label">Active Notes:</span>
+              <div class="multi-note-list" id="multiNoteList">
+                <span class="note-pill idle">None</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Crosshair indicators -->
+          <div class="crosshair-h" id="crosshairH"></div>
+          <div class="crosshair-v" id="crosshairV"></div>
+
+          <!-- Audio Start Overlay Prompt -->
+          <div class="start-overlay" id="startOverlay">
+            <div class="start-card">
+              <div class="start-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#start_icon_grad)" stroke-width="1.5">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </div>
+              <h2>Real-Time 2D Spectrogram</h2>
+              <p>Capture microphone input and view high-resolution scrolling frequency spectrum in real time.</p>
+              <button class="btn btn-primary btn-lg" id="overlayStartBtn">
+                <span>Enable Microphone Access</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Time X-Axis Grid Bar -->
+        <div class="x-axis-container" id="xAxisContainer">
+          <!-- Time ticks (e.g., -10s, -8s, -6s, -4s, -2s, Now) -->
+        </div>
+      </section>
+
+      <!-- Integrated Side Reference Piano Panel -->
+      <aside class="piano-panel" id="pianoPanel">
+        <div class="piano-panel-header">
+          <div class="piano-title-box">
+            <div class="piano-icon-badge">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                <line x1="6" y1="5" x2="6" y2="13"></line>
+                <line x1="10" y1="5" x2="10" y2="13"></line>
+                <line x1="14" y1="5" x2="14" y2="13"></line>
+                <line x1="18" y1="5" x2="18" y2="13"></line>
+              </svg>
+            </div>
+            <div>
+              <h3 class="piano-heading">Reference Piano</h3>
+              <span class="piano-subtitle">Output Only (Bypasses Spectrogram)</span>
+            </div>
+          </div>
+          <button class="panel-collapse-btn" id="closePianoPanelBtn" title="Collapse Piano Panel">&times;</button>
+        </div>
+
+        <div class="piano-panel-controls">
+          <label class="sustain-checkbox-label" title="Hold notes until clicked again">
+            <input type="checkbox" id="pianoSustainCheck">
+            <span>Sustain / Hold Notes</span>
+          </label>
+          <div class="octave-selector">
+            <button class="btn btn-secondary btn-sm" id="pianoOctaveDown" title="Shift Octave Down">- Octave</button>
+            <span id="pianoOctaveText" class="val-badge">Octave: C4 - C6</span>
+            <button class="btn btn-secondary btn-sm" id="pianoOctaveUp" title="Shift Octave Up">+ Octave</button>
+          </div>
+        </div>
+
+        <div class="piano-keyboard-wrapper">
+          <div class="piano-keyboard" id="pianoKeyboard">
+            <!-- Piano Keys generated dynamically in spectrogram.js -->
+          </div>
+        </div>
+
+        <div class="piano-panel-footer">
+          <span>💡 Click/Tap to play • Enable <strong>Sustain</strong> to hold notes • Keyboard: <strong>A S D F G H J K L</strong> | <strong>W E T Y U O P</strong></span>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Footer Stats / Legend -->
+    <footer class="app-footer">
+      <div class="footer-stat">
+        <span class="stat-label">DOMINANT PEAK:</span>
+        <span class="stat-value" id="dominantFreqText">--- Hz (---)</span>
+      </div>
+      <div class="footer-stat">
+        <span class="stat-label">SAMPLE RATE:</span>
+        <span class="stat-value" id="sampleRateText">44100 Hz</span>
+      </div>
+      <div class="footer-stat">
+        <span class="stat-label">FRAME RATE:</span>
+        <span class="stat-value" id="fpsText">60 FPS</span>
+      </div>
+      <div class="footer-legend">
+        <span>Colormap Power Legend:</span>
+        <div class="legend-bar" id="legendBar"></div>
+        <span class="legend-min">-100 dB</span>
+        <span class="legend-max">0 dB</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Beatbox & Mic Calibration Wizard Modal -->
+  <div class="modal-overlay hidden" id="calibrationModal">
+    <div class="modal-card">
+      <button class="modal-close" id="modalCloseBtn">&times;</button>
+      <div class="wizard-header">
+        <div class="wizard-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#wiz_grad)" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 6v6l4 2"></path>
+            <defs>
+              <linearGradient id="wiz_grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#00F0FF"/>
+                <stop offset="1" stop-color="#FF007A"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h2>Mic Calibration Wizard</h2>
+        <span class="wizard-step-tag" id="wizStepTag">Step 1 of 2</span>
+      </div>
+
+      <div class="wizard-body">
+        <h3 id="wizTitle">Phase 1: Ambient Room Noise Sampling</h3>
+        <p id="wizDesc">Please remain quiet for 2 seconds so we can sample your background room noise and set the noise gate.</p>
+
+        <div class="countdown-circle-container">
+          <svg class="countdown-svg" viewBox="0 0 100 100">
+            <circle class="countdown-bg" cx="50" cy="50" r="42"></circle>
+            <circle class="countdown-bar" id="countdownBar" cx="50" cy="50" r="42"></circle>
+          </svg>
+          <div class="countdown-number" id="countdownNumber">5</div>
+        </div>
+
+        <div class="live-mic-meter-box">
+          <div class="mic-meter-label">Live Signal Peak: <span id="wizPeakDb">-∞ dB</span></div>
+          <div class="mic-meter-track">
+            <div class="mic-meter-fill" id="wizMeterFill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wizard-footer">
+        <button class="btn btn-secondary" id="cancelCalibBtn">Cancel</button>
+        <button class="btn btn-primary" id="startCalibStepBtn">Start Phase 1 (Quiet 2s)</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="spectrogram.js"></script>
+</body>
+</html>
