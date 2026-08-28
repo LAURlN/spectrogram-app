@@ -228,6 +228,16 @@
     DOM.sampleRateText = document.getElementById('sampleRateText');
     DOM.fpsText = document.getElementById('fpsText');
     DOM.legendBar = document.getElementById('legendBar');
+
+    DOM.gameMenuBtn = document.getElementById('gameMenuBtn');
+    DOM.gameMenuDrawer = document.getElementById('gameMenuDrawer');
+    DOM.gameMenuOverlay = document.getElementById('gameMenuOverlay');
+    DOM.closeGameMenuBtn = document.getElementById('closeGameMenuBtn');
+    DOM.selectSpectrogramBtn = document.getElementById('selectSpectrogramBtn');
+    DOM.selectGame2Btn = document.getElementById('selectGame2Btn');
+    DOM.returnToSpectrogramBtn = document.getElementById('returnToSpectrogramBtn');
+    DOM.spectrogramView = document.getElementById('spectrogramView');
+    DOM.game2View = document.getElementById('game2View');
   }
 
   function setupCanvases() {
@@ -544,6 +554,71 @@
     window.addEventListener('beforeunload', () => {
       stopMicrophone();
     });
+
+    // Game Menu & Mode Switch Handlers
+    if (DOM.gameMenuBtn) {
+      DOM.gameMenuBtn.addEventListener('click', openGameMenu);
+    }
+    if (DOM.closeGameMenuBtn) {
+      DOM.closeGameMenuBtn.addEventListener('click', closeGameMenu);
+    }
+    if (DOM.gameMenuOverlay) {
+      DOM.gameMenuOverlay.addEventListener('click', closeGameMenu);
+    }
+
+    if (DOM.selectSpectrogramBtn) {
+      DOM.selectSpectrogramBtn.addEventListener('click', () => switchGameMode('spectrogram'));
+    }
+    if (DOM.selectGame2Btn) {
+      DOM.selectGame2Btn.addEventListener('click', () => switchGameMode('game2'));
+    }
+    if (DOM.returnToSpectrogramBtn) {
+      DOM.returnToSpectrogramBtn.addEventListener('click', () => switchGameMode('spectrogram'));
+    }
+  }
+
+  function openGameMenu() {
+    if (DOM.gameMenuDrawer) DOM.gameMenuDrawer.classList.remove('hidden');
+    if (DOM.gameMenuOverlay) DOM.gameMenuOverlay.classList.remove('hidden');
+  }
+
+  function closeGameMenu() {
+    if (DOM.gameMenuDrawer) DOM.gameMenuDrawer.classList.add('hidden');
+    if (DOM.gameMenuOverlay) DOM.gameMenuOverlay.classList.add('hidden');
+  }
+
+  function switchGameMode(mode) {
+    closeGameMenu();
+    if (mode === 'spectrogram') {
+      if (DOM.spectrogramView) DOM.spectrogramView.classList.remove('hidden');
+      if (DOM.game2View) DOM.game2View.classList.add('hidden');
+
+      if (DOM.selectSpectrogramBtn) {
+        DOM.selectSpectrogramBtn.classList.add('active');
+        const badge = DOM.selectSpectrogramBtn.querySelector('.game-card-badge');
+        if (badge) { badge.textContent = 'Active'; badge.classList.remove('placeholder'); }
+      }
+      if (DOM.selectGame2Btn) {
+        DOM.selectGame2Btn.classList.remove('active');
+        const badge = DOM.selectGame2Btn.querySelector('.game-card-badge');
+        if (badge) { badge.textContent = 'Select'; badge.classList.add('placeholder'); }
+      }
+      setTimeout(resizeCanvases, 100);
+    } else if (mode === 'game2') {
+      if (DOM.spectrogramView) DOM.spectrogramView.classList.add('hidden');
+      if (DOM.game2View) DOM.game2View.classList.remove('hidden');
+
+      if (DOM.selectSpectrogramBtn) {
+        DOM.selectSpectrogramBtn.classList.remove('active');
+        const badge = DOM.selectSpectrogramBtn.querySelector('.game-card-badge');
+        if (badge) { badge.textContent = 'Select'; badge.classList.add('placeholder'); }
+      }
+      if (DOM.selectGame2Btn) {
+        DOM.selectGame2Btn.classList.add('active');
+        const badge = DOM.selectGame2Btn.querySelector('.game-card-badge');
+        if (badge) { badge.textContent = 'Active'; badge.classList.remove('placeholder'); }
+      }
+    }
   }
 
   // --- Audio Engine ---

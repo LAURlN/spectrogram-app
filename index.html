@@ -8,23 +8,55 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
   <div class="app-container">
     <!-- Top Navigation Header -->
     <header class="app-header">
       <div class="header-left">
+        <button class="btn-icon" id="gameMenuBtn" title="Select Game / Mode">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
         <div class="mic-status-badge idled" id="micStatus">
           <span class="status-dot"></span>
           <span class="status-text" id="statusText">Idle</span>
         </div>
-        <div class="audio-level-meter" title="Audio Input Level">
-          <span class="meter-label">MIC</span>
-          <div class="meter-bar-container">
-            <div class="meter-bar-fill" id="meterBar"></div>
+      </div>
+
+      <!-- Game Selection Dropdown / Drawer -->
+      <div class="game-menu-overlay hidden" id="gameMenuOverlay"></div>
+      <div class="game-menu-drawer hidden" id="gameMenuDrawer">
+        <div class="game-menu-header">
+          <div class="menu-title">
+            <span class="menu-icon">🎮</span>
+            <h3>Select Mode / Game</h3>
           </div>
-          <span class="meter-value" id="meterValue">-∞ dB</span>
+          <button class="btn-close-icon" id="closeGameMenuBtn">&times;</button>
+        </div>
+
+        <div class="game-menu-list">
+          <button class="game-menu-card active" id="selectSpectrogramBtn" data-game="spectrogram">
+            <div class="game-card-icon">📊</div>
+            <div class="game-card-info">
+              <span class="game-card-title">2D Spectrogram</span>
+              <span class="game-card-sub">Real-time spectrum & pitch tuner</span>
+            </div>
+            <span class="game-card-badge">Active</span>
+          </button>
+
+          <button class="game-menu-card" id="selectGame2Btn" data-game="game2">
+            <div class="game-card-icon">🎯</div>
+            <div class="game-card-info">
+              <span class="game-card-title">Game 2 (Empty Mode)</span>
+              <span class="game-card-sub">Placeholder for next game</span>
+            </div>
+            <span class="game-card-badge placeholder">Select</span>
+          </button>
         </div>
       </div>
 
@@ -83,8 +115,10 @@
 
     <!-- Main Content Grid -->
     <main class="app-main">
-      <!-- Sidebar Control Panel -->
-      <aside class="control-panel">
+      <!-- Game 1: 2D Spectrogram View -->
+      <div class="game-view-container active" id="spectrogramView">
+        <!-- Sidebar Control Panel -->
+        <aside class="control-panel">
         <div class="panel-section">
           <h2>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -465,7 +499,24 @@
           <span>💡 Click/Tap to play • Enable <strong>Sustain</strong> to hold notes • Keyboard: <strong>A S D F G H J K L</strong> | <strong>W E T Y U O P</strong></span>
         </div>
       </aside>
-    </main>
+    </div>
+
+    <!-- Game 2 View (Empty Game Canvas Placeholder) -->
+    <div class="game-view-container hidden" id="game2View">
+      <div class="placeholder-game-screen">
+        <div class="placeholder-card">
+          <div class="placeholder-icon-ring">🎯</div>
+          <h2>Game 2 (Empty Game Canvas)</h2>
+          <p>This is a fresh, empty workspace for your next game! Use the top-left ☰ menu to switch back to the 2D Spectrogram visualizer anytime.</p>
+          <div class="placeholder-actions">
+            <button class="btn btn-primary" id="returnToSpectrogramBtn">
+              <span>📊 Return to Spectrogram</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
 
     <!-- Footer Stats / Legend -->
     <footer class="app-footer">
