@@ -513,6 +513,37 @@
     // Inspector mouse hover
     DOM.canvasWrapper.addEventListener('mousemove', handleMouseMove);
     DOM.canvasWrapper.addEventListener('mouseleave', handleMouseLeave);
+
+    // Mobile Background / Tab Switch Lifecycle Management
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        // Tab moved to background: disable audio tracks & suspend context to release phone mic hardware
+        if (isRunning && mediaStream) {
+          mediaStream.getAudioTracks().forEach(track => { track.enabled = false; });
+        }
+        if (audioCtx && audioCtx.state === 'running') {
+          audioCtx.suspend().catch(() => {});
+        }
+      } else if (document.visibilityState === 'visible') {
+        // Tab returned to foreground: re-enable tracks & resume context
+        if (isRunning) {
+          if (mediaStream) {
+            mediaStream.getAudioTracks().forEach(track => { track.enabled = true; });
+          }
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+          }
+        }
+      }
+    });
+
+    window.addEventListener('pagehide', () => {
+      stopMicrophone();
+    });
+
+    window.addEventListener('beforeunload', () => {
+      stopMicrophone();
+    });
   }
 
   // --- Audio Engine ---
@@ -551,6 +582,11 @@
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
+      audioCtx.onstatechange = () => {
+        if (audioCtx && audioCtx.state === 'suspended' && isRunning && !isPaused && document.visibilityState === 'visible') {
+          audioCtx.resume().catch(() => {});
+        }
+      };
       if (audioCtx.state === 'suspended') {
         await audioCtx.resume();
       }
@@ -696,6 +732,17 @@
     }
 
     if (isRunning && analyserNode) {
+      if (mediaStream) {
+        const tracks = mediaStream.getAudioTracks();
+        if (!tracks.length || tracks[0].readyState === 'ended') {
+          stopMicrophone();
+          return;
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended' && document.visibilityState === 'visible') {
+        audioCtx.resume().catch(() => {});
+      }
+
       analyserNode.getFloatFrequencyData(frequencyData);
       analyserNode.getByteTimeDomainData(timeData);
 
