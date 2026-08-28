@@ -2920,20 +2920,26 @@
 
     if (!refSpectra || !attSpectra || refSpectra.length === 0 || attSpectra.length === 0) return 0;
 
-    const maxShiftFrames = 30;
-    const minShiftFrames = -10;
+    const nRef = refSpectra.length;
+    const nAtt = attSpectra.length;
+
+    // Search range: -15 frames to +70 frames (up to ~1000ms mobile/bluetooth latency)
+    const minShift = -15;
+    const maxShift = Math.min(70, Math.floor(nAtt * 0.45));
 
     let bestShift = 0;
     let maxTotalScore = -1;
 
-    for (let shift = minShiftFrames; shift <= maxShiftFrames; shift++) {
+    for (let shift = minShift; shift <= maxShift; shift++) {
       let sumScore = 0;
       let count = 0;
 
-      for (let t = 0; t < refSpectra.length; t++) {
-        const attIndex = t + shift;
-        if (attIndex >= 0 && attIndex < attSpectra.length) {
-          const matchScore = computeAdvancedMusicalMatch(attSpectra[attIndex], refSpectra[t]);
+      for (let t = 0; t < nRef; t++) {
+        const attProgress = (t / nRef) + (shift / nRef);
+        const attIdx = Math.floor(attProgress * nAtt);
+
+        if (attIdx >= 0 && attIdx < nAtt) {
+          const matchScore = computeAdvancedMusicalMatch(attSpectra[attIdx], refSpectra[t]);
           if (matchScore !== null) {
             sumScore += matchScore;
             count++;
@@ -2950,25 +2956,19 @@
       }
     }
 
-    const msPerFrame = (g2State.refDurationSec * 1000) / refSpectra.length;
+    const msPerFrame = (g2State.refDurationSec * 1000) / nRef;
     const detectedLatencyMs = Math.round(bestShift * msPerFrame);
     g2State.detectedLatencyMs = detectedLatencyMs;
     g2State.bestFrameShift = bestShift;
 
-    if (bestShift !== 0) {
-      const alignedAttempt = new Array(refSpectra.length);
-      for (let t = 0; t < refSpectra.length; t++) {
-        const srcIdx = t + bestShift;
-        if (srcIdx >= 0 && srcIdx < attSpectra.length) {
-          alignedAttempt[t] = attSpectra[srcIdx];
-        } else {
-          alignedAttempt[t] = new Float32Array(refSpectra[0].length).fill(-100);
-        }
-      }
-      g2State.alignedAttemptSpectra = alignedAttempt;
-    } else {
-      g2State.alignedAttemptSpectra = attSpectra;
+    // Build Time-Aligned Attempt Array mapped 1-to-1 with Target time axis
+    const alignedAttempt = new Array(nRef);
+    for (let t = 0; t < nRef; t++) {
+      const attProgress = (t / nRef) + (bestShift / nRef);
+      const attIdx = Math.max(0, Math.min(nAtt - 1, Math.floor(attProgress * nAtt)));
+      alignedAttempt[t] = attSpectra[attIdx];
     }
+    g2State.alignedAttemptSpectra = alignedAttempt;
 
     const scaledScore = scaleToFullRangeScore(maxTotalScore);
     const scorePercent = Math.max(0, Math.min(100, Math.round(scaledScore * 100)));
