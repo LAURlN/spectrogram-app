@@ -1619,9 +1619,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(6px);
-  z-index: 100;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 99999;
   transition: opacity 0.3s ease;
 }
 
@@ -1631,12 +1631,13 @@ input[type="range"]::-webkit-slider-thumb:hover {
   left: 12px;
   width: 320px;
   max-width: 90vw;
-  background: var(--bg-card);
-  border: 1px solid var(--panel-border);
+  background: #0d111d !important;
+  opacity: 1 !important;
+  border: 1px solid var(--primary);
   border-radius: var(--radius-lg);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 240, 255, 0.15);
-  z-index: 101;
-  padding: 16px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(0, 240, 255, 0.25);
+  z-index: 100000;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
