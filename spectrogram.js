@@ -2899,6 +2899,21 @@
     return Math.max(0.0, Math.min(1.0, shapeSim * 0.6));
   }
 
+  function scaleToFullRangeScore(rawScore) {
+    if (rawScore <= 0.20) return 0.0;
+
+    const normalized = (rawScore - 0.20) / (0.78 - 0.20);
+    const clamped = Math.max(0.0, Math.min(1.0, normalized));
+
+    let scaled = Math.pow(clamped, 1.3);
+
+    if (clamped >= 0.75) {
+      scaled = 0.78 + (clamped - 0.75) * 0.88;
+    }
+
+    return Math.max(0.0, Math.min(1.0, scaled));
+  }
+
   function autoDetectAndAlignLatency() {
     const refSpectra = g2State.refSpectra;
     const attSpectra = g2State.attemptSpectra;
@@ -2955,20 +2970,21 @@
       g2State.alignedAttemptSpectra = attSpectra;
     }
 
-    const scorePercent = Math.max(0, Math.min(100, Math.round(maxTotalScore * 100)));
+    const scaledScore = scaleToFullRangeScore(maxTotalScore);
+    const scorePercent = Math.max(0, Math.min(100, Math.round(scaledScore * 100)));
     g2State.finalCompensatedScore = scorePercent;
 
     if (DOM.g2ScoreVal) DOM.g2ScoreVal.textContent = `${scorePercent}%`;
     if (DOM.g2ScoreBarFill) DOM.g2ScoreBarFill.style.width = `${scorePercent}%`;
 
     if (DOM.g2RatingBadge) {
-      if (scorePercent >= 85) {
+      if (scorePercent >= 88) {
         DOM.g2RatingBadge.textContent = '🌟 PERFECT MATCH!';
         DOM.g2RatingBadge.className = 'rating-badge perfect';
-      } else if (scorePercent >= 70) {
+      } else if (scorePercent >= 68) {
         DOM.g2RatingBadge.textContent = '🔥 GREAT VOCAL MATCH!';
         DOM.g2RatingBadge.className = 'rating-badge great';
-      } else if (scorePercent >= 45) {
+      } else if (scorePercent >= 40) {
         DOM.g2RatingBadge.textContent = '👍 GOOD ATTEMPT';
         DOM.g2RatingBadge.className = 'rating-badge good';
       } else {
@@ -3098,20 +3114,21 @@
         const match = computeAdvancedMusicalMatch(liveFrequencyData, refFrame);
         if (match !== null) {
           g2State.matchScores.push(match);
-          const avgSim = g2State.matchScores.reduce((a, b) => a + b, 0) / g2State.matchScores.length;
-          const scorePercent = Math.round(avgSim * 100);
+          const avgRaw = g2State.matchScores.reduce((a, b) => a + b, 0) / g2State.matchScores.length;
+          const scaled = scaleToFullRangeScore(avgRaw);
+          const scorePercent = Math.round(scaled * 100);
 
           if (DOM.g2ScoreVal) DOM.g2ScoreVal.textContent = `${scorePercent}%`;
           if (DOM.g2ScoreBarFill) DOM.g2ScoreBarFill.style.width = `${scorePercent}%`;
 
           if (DOM.g2RatingBadge) {
-            if (scorePercent >= 85) {
+            if (scorePercent >= 88) {
               DOM.g2RatingBadge.textContent = '🌟 PERFECT MATCH!';
               DOM.g2RatingBadge.className = 'rating-badge perfect';
-            } else if (scorePercent >= 70) {
+            } else if (scorePercent >= 68) {
               DOM.g2RatingBadge.textContent = '🔥 GREAT VOCAL MATCH!';
               DOM.g2RatingBadge.className = 'rating-badge great';
-            } else if (scorePercent >= 45) {
+            } else if (scorePercent >= 40) {
               DOM.g2RatingBadge.textContent = '👍 GOOD ATTEMPT';
               DOM.g2RatingBadge.className = 'rating-badge good';
             } else {
