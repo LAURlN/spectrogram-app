@@ -8,87 +8,121 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <div class="app-container">
-    <!-- Top Navigation Header -->
-    <header class="app-header">
-      <div class="header-left">
-        <button class="btn-icon" id="gameMenuBtn" title="Select Game / Mode">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-          </svg>
-        </button>
-        <div class="mic-status-badge idled" id="micStatus">
-          <span class="status-dot"></span>
-          <span class="status-text" id="statusText">Idle</span>
+  <div class="app-container">
+    <!-- Game / Mode Selection Slide-Over Drawer -->
+    <div class="menu-drawer-overlay hidden" id="menuDrawerOverlay">
+      <div class="menu-drawer" id="menuDrawer">
+        <div class="menu-header">
+          <h2>Select Game / Mode</h2>
+          <button class="close-menu-btn" id="closeMenuBtn" title="Close Menu">&times;</button>
         </div>
-      </div>
+        <div class="menu-items">
+          <button class="menu-item active" id="selectSpectrogramBtn" data-mode="spectrogram">
+            <div class="menu-item-icon">📊</div>
+            <div class="menu-item-info">
+              <span class="menu-item-title">2D Spectrogram & Pitch Tuner</span>
+              <span class="menu-item-desc">Real-time spectral visualizer, pitch detection & reference piano</span>
+            </div>
+          </button>
 
-      <div class="header-actions">
-        <div class="spectrogram-header-actions" id="spectrogramHeaderActions">
-          <button class="btn btn-primary" id="toggleMicBtn" title="Start/Stop Microphone">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-              <line x1="12" y1="19" x2="12" y2="23"></line>
-              <line x1="8" y1="23" x2="16" y2="23"></line>
-            </svg>
-            <span id="toggleMicBtnText">Mic</span>
-          </button>
-          <button class="btn btn-accent" id="calibrateBtn" title="5s Beatbox Calibration">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <circle cx="12" cy="12" r="6"></circle>
-              <circle cx="12" cy="12" r="2"></circle>
-            </svg>
-            <span>Calib</span>
-          </button>
-          <button class="btn btn-secondary" id="freezeBtn" disabled title="Freeze/Resume">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="6" y="4" width="4" height="16"></rect>
-              <rect x="14" y="4" width="4" height="16"></rect>
-            </svg>
-            <span>Freeze</span>
-          </button>
-          <button class="btn btn-secondary active" id="toggleSidebarBtn" title="Settings Panel">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2"></rect>
-              <path d="M9 3v18"></path>
-            </svg>
-            <span>⚙️ Settings</span>
-          </button>
-          <button class="btn btn-secondary active" id="togglePianoPanelBtn" title="Reference Piano">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
-              <line x1="6" y1="5" x2="6" y2="13"></line>
-              <line x1="10" y1="5" x2="10" y2="13"></line>
-              <line x1="14" y1="5" x2="14" y2="13"></line>
-              <line x1="18" y1="5" x2="18" y2="13"></line>
-            </svg>
-            <span>🎹 Piano</span>
-          </button>
-          <button class="btn btn-secondary" id="exportBtn" title="Export Image">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            <span>Export</span>
+          <button class="menu-item" id="selectGame2Btn" data-mode="game2">
+            <div class="menu-item-icon">🎮</div>
+            <div class="menu-item-info">
+              <span class="menu-item-title">Game 2 (Empty Placeholder)</span>
+              <span class="menu-item-desc">Blank workspace ready for Game 2</span>
+            </div>
           </button>
         </div>
       </div>
-    </header>
+    </div>
 
-    <!-- Main Content Grid -->
+    <!-- Main Content Container -->
     <main class="app-main">
-      <!-- Game 1: 2D Spectrogram View -->
-      <div class="game-view-container active" id="spectrogramView">
+      <!-- Mode 1: 2D Spectrogram View -->
+      <div class="mode-view spectrogram-view" id="viewSpectrogram">
+        <!-- Spectrogram Top Header Bar -->
+        <header class="app-header header-spectrogram">
+          <div class="header-left">
+            <button class="btn btn-icon btn-secondary app-menu-btn" id="appMenuBtn" title="Select Game / Mode">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <div class="mic-status-badge idled" id="micStatus">
+              <span class="status-dot"></span>
+              <span class="status-text" id="statusText">Idle</span>
+            </div>
+            <div class="audio-level-meter" title="Audio Input Level">
+              <span class="meter-label">MIC</span>
+              <div class="meter-bar-container">
+                <div class="meter-bar-fill" id="meterBar"></div>
+              </div>
+              <span class="meter-value" id="meterValue">-∞ dB</span>
+            </div>
+          </div>
+
+          <div class="header-actions">
+            <button class="btn btn-primary" id="toggleMicBtn" title="Start/Stop Microphone">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <span id="toggleMicBtnText">Mic</span>
+            </button>
+            <button class="btn btn-accent" id="calibrateBtn" title="5s Beatbox Calibration">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="6"></circle>
+                <circle cx="12" cy="12" r="2"></circle>
+              </svg>
+              <span>Calib</span>
+            </button>
+            <button class="btn btn-secondary" id="freezeBtn" disabled title="Freeze/Resume">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+              <span>Freeze</span>
+            </button>
+            <button class="btn btn-secondary active" id="toggleSidebarBtn" title="Settings Panel">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                <path d="M9 3v18"></path>
+              </svg>
+              <span>⚙️ Settings</span>
+            </button>
+            <button class="btn btn-secondary active" id="togglePianoPanelBtn" title="Reference Piano">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                <line x1="6" y1="5" x2="6" y2="13"></line>
+                <line x1="10" y1="5" x2="10" y2="13"></line>
+                <line x1="14" y1="5" x2="14" y2="13"></line>
+                <line x1="18" y1="5" x2="18" y2="13"></line>
+              </svg>
+              <span>🎹 Piano</span>
+            </button>
+            <button class="btn btn-secondary" id="exportBtn" title="Export Image">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Export</span>
+            </button>
+          </div>
+        </header>
+
+        <div class="spectrogram-main-body">
         <!-- Sidebar Control Panel -->
-        <aside class="control-panel">
+      <aside class="control-panel">
         <div class="panel-section">
           <h2>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -469,24 +503,90 @@
           <span>💡 Click/Tap to play • Enable <strong>Sustain</strong> to hold notes • Keyboard: <strong>A S D F G H J K L</strong> | <strong>W E T Y U O P</strong></span>
         </div>
       </aside>
-    </div>
+        </div> <!-- /.spectrogram-main-body -->
+      </div> <!-- /#viewSpectrogram -->
 
-    <!-- Game 2 View (Empty Game Canvas Placeholder) -->
-    <div class="game-view-container hidden" id="game2View">
-      <div class="placeholder-game-screen">
-        <div class="placeholder-card">
-          <div class="placeholder-icon-ring">🎯</div>
-          <h2>Game 2 (Empty Game Canvas)</h2>
-          <p>This is a fresh, empty workspace for your next game! Use the top-left ☰ menu to switch back to the 2D Spectrogram visualizer anytime.</p>
-          <div class="placeholder-actions">
-            <button class="btn btn-primary" id="returnToSpectrogramBtn">
-              <span>📊 Return to Spectrogram</span>
+      <!-- Mode 2: Game 2 Spectral Echo Matcher & Vocal Challenge -->
+      <div class="mode-view game2-view hidden" id="viewGame2">
+        <!-- Game 2 Dedicated Top Header Bar -->
+        <header class="app-header header-game2">
+          <div class="header-left">
+            <button class="btn btn-icon btn-secondary app-menu-btn" id="game2MenuBtn" title="Select Game / Mode">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
             </button>
+            <div class="game2-title-badge">
+              <span class="game2-badge-icon">🎯</span>
+              <span class="game2-badge-text">Spectral Echo Matcher</span>
+            </div>
+            <div class="game2-status-pill" id="game2StatusText">Idle</div>
+          </div>
+
+          <div class="header-actions">
+            <button class="btn btn-primary" id="g2RecordRefBtn" title="Record Target Audio Clip">
+              <span id="g2RecordRefBtnText">🔴 Record Target</span>
+            </button>
+            <button class="btn btn-secondary" id="g2PlayRefBtn" disabled title="Replay Recorded Target Audio">
+              <span>▶️ Replay Target</span>
+            </button>
+            <button class="btn btn-accent" id="g2StartMatchBtn" disabled title="Start Your Attempt & Compare">
+              <span id="g2StartMatchBtnText">🎤 Start Attempt</span>
+            </button>
+            <button class="btn btn-secondary" id="g2ResetBtn" title="Reset Game & Clear Recordings">
+              <span>🔄 Reset</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Game 2 Main Body: Dual Spectrogram & Live Score HUD -->
+        <div class="game2-main-body">
+          <!-- Top Panel: Target Reference Spectrogram -->
+          <div class="game2-spectro-panel target-panel">
+            <div class="panel-tag target-tag">
+              <span>🎯 TARGET RECORDING SPECTROGRAM</span>
+              <div class="badge-group">
+                <span id="targetNoteBadge" class="duration-badge note-badge">Note: ---</span>
+                <span id="targetDurationBadge" class="duration-badge">0.0s</span>
+              </div>
+            </div>
+            <div class="game2-canvas-wrapper">
+              <canvas id="targetSpectrogramCanvas" width="800" height="250"></canvas>
+            </div>
+          </div>
+
+          <!-- Score & Similarity HUD Divider -->
+          <div class="game2-score-divider">
+            <div class="score-card">
+              <span class="score-label">SPECTRAL MATCH ACCURACY</span>
+              <div class="score-value-row">
+                <span id="g2ScoreVal" class="score-percent">0%</span>
+                <span id="g2RatingBadge" class="rating-badge">RECORD TARGET FIRST</span>
+              </div>
+              <div class="score-bar-track">
+                <div id="g2ScoreBarFill" class="score-bar-fill"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Panel: Live User Attempt Spectrogram -->
+          <div class="game2-spectro-panel attempt-panel">
+            <div class="panel-tag attempt-tag">
+              <span>🎤 YOUR LIVE ATTEMPT SPECTROGRAM</span>
+              <div class="badge-group">
+                <span id="attemptNoteBadge" class="duration-badge note-badge">Note: ---</span>
+                <span id="attemptStatusBadge" class="duration-badge">READY</span>
+              </div>
+            </div>
+            <div class="game2-canvas-wrapper">
+              <canvas id="attemptSpectrogramCanvas" width="800" height="250"></canvas>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </main>
+    </main>
 
     <!-- Footer Stats / Legend -->
     <footer class="app-footer">
@@ -556,38 +656,6 @@
         <button class="btn btn-secondary" id="cancelCalibBtn">Cancel</button>
         <button class="btn btn-primary" id="startCalibStepBtn">Start Phase 1 (Quiet 2s)</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Top-Level Game Selection Dropdown / Drawer -->
-  <div class="game-menu-overlay hidden" id="gameMenuOverlay"></div>
-  <div class="game-menu-drawer hidden" id="gameMenuDrawer">
-    <div class="game-menu-header">
-      <div class="menu-title">
-        <span class="menu-icon">🎮</span>
-        <h3>Select Mode / Game</h3>
-      </div>
-      <button class="btn-close-icon" id="closeGameMenuBtn">&times;</button>
-    </div>
-
-    <div class="game-menu-list">
-      <button class="game-menu-card active" id="selectSpectrogramBtn" data-game="spectrogram">
-        <div class="game-card-icon">📊</div>
-        <div class="game-card-info">
-          <span class="game-card-title">2D Spectrogram</span>
-          <span class="game-card-sub">Real-time spectrum & pitch tuner</span>
-        </div>
-        <span class="game-card-badge">Active</span>
-      </button>
-
-      <button class="game-menu-card" id="selectGame2Btn" data-game="game2">
-        <div class="game-card-icon">🎯</div>
-        <div class="game-card-info">
-          <span class="game-card-title">Game 2 (Empty Mode)</span>
-          <span class="game-card-sub">Placeholder for next game</span>
-        </div>
-        <span class="game-card-badge placeholder">Select</span>
-      </button>
     </div>
   </div>
 

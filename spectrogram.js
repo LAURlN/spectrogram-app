@@ -192,6 +192,14 @@
     DOM.calRangeVal = document.getElementById('calRangeVal');
     DOM.calGainVal = document.getElementById('calGainVal');
 
+    DOM.appMenuBtn = document.getElementById('appMenuBtn');
+    DOM.menuDrawerOverlay = document.getElementById('menuDrawerOverlay');
+    DOM.closeMenuBtn = document.getElementById('closeMenuBtn');
+    DOM.selectSpectrogramBtn = document.getElementById('selectSpectrogramBtn');
+    DOM.selectGame2Btn = document.getElementById('selectGame2Btn');
+    DOM.viewSpectrogram = document.getElementById('viewSpectrogram');
+    DOM.viewGame2 = document.getElementById('viewGame2');
+
     DOM.pitchTunerHud = document.getElementById('pitchTunerHud');
     DOM.tunerNoteBadge = document.getElementById('tunerNoteBadge');
     DOM.tunerFreqVal = document.getElementById('tunerFreqVal');
@@ -229,16 +237,23 @@
     DOM.fpsText = document.getElementById('fpsText');
     DOM.legendBar = document.getElementById('legendBar');
 
-    DOM.gameMenuBtn = document.getElementById('gameMenuBtn');
-    DOM.gameMenuDrawer = document.getElementById('gameMenuDrawer');
-    DOM.gameMenuOverlay = document.getElementById('gameMenuOverlay');
-    DOM.closeGameMenuBtn = document.getElementById('closeGameMenuBtn');
-    DOM.selectSpectrogramBtn = document.getElementById('selectSpectrogramBtn');
-    DOM.selectGame2Btn = document.getElementById('selectGame2Btn');
-    DOM.returnToSpectrogramBtn = document.getElementById('returnToSpectrogramBtn');
-    DOM.spectrogramView = document.getElementById('spectrogramView');
-    DOM.game2View = document.getElementById('game2View');
-    DOM.spectrogramHeaderActions = document.getElementById('spectrogramHeaderActions');
+    // Game 2 Spectral Echo Matcher Elements
+    DOM.g2RecordRefBtn = document.getElementById('g2RecordRefBtn');
+    DOM.g2RecordRefBtnText = document.getElementById('g2RecordRefBtnText');
+    DOM.g2PlayRefBtn = document.getElementById('g2PlayRefBtn');
+    DOM.g2StartMatchBtn = document.getElementById('g2StartMatchBtn');
+    DOM.g2StartMatchBtnText = document.getElementById('g2StartMatchBtnText');
+    DOM.g2ResetBtn = document.getElementById('g2ResetBtn');
+    DOM.game2StatusText = document.getElementById('game2StatusText');
+    DOM.targetDurationBadge = document.getElementById('targetDurationBadge');
+    DOM.attemptStatusBadge = document.getElementById('attemptStatusBadge');
+    DOM.targetNoteBadge = document.getElementById('targetNoteBadge');
+    DOM.attemptNoteBadge = document.getElementById('attemptNoteBadge');
+    DOM.g2ScoreVal = document.getElementById('g2ScoreVal');
+    DOM.g2RatingBadge = document.getElementById('g2RatingBadge');
+    DOM.g2ScoreBarFill = document.getElementById('g2ScoreBarFill');
+    DOM.targetSpectrogramCanvas = document.getElementById('targetSpectrogramCanvas');
+    DOM.attemptSpectrogramCanvas = document.getElementById('attemptSpectrogramCanvas');
   }
 
   function setupCanvases() {
@@ -289,6 +304,7 @@
     spectroCtx.drawImage(offscreenCanvas, 0, 0);
     renderYAxis();
     renderXAxis();
+    resizeGame2Canvases();
   }
 
   function setupEventListeners() {
@@ -528,12 +544,22 @@
     // Mobile Background / Tab Switch Lifecycle Management
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
+        // Tab moved to background: disable audio tracks & suspend context to release phone mic hardware
+        if (isRunning && mediaStream) {
+          mediaStream.getAudioTracks().forEach(track => { track.enabled = false; });
+        }
         if (audioCtx && audioCtx.state === 'running') {
           audioCtx.suspend().catch(() => {});
         }
       } else if (document.visibilityState === 'visible') {
-        if (isRunning && audioCtx && audioCtx.state === 'suspended') {
-          audioCtx.resume().catch(() => {});
+        // Tab returned to foreground: re-enable tracks & resume context
+        if (isRunning) {
+          if (mediaStream) {
+            mediaStream.getAudioTracks().forEach(track => { track.enabled = true; });
+          }
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+          }
         }
       }
     });
@@ -546,81 +572,72 @@
       stopMicrophone();
     });
 
-    // Game Menu & Mode Switch Handlers
-    if (DOM.gameMenuBtn) {
-      DOM.gameMenuBtn.addEventListener('click', openGameMenu);
+    // Game Selector Hamburger Menu & Mode Switcher Handlers
+    document.querySelectorAll('.app-menu-btn').forEach(btn => {
+      btn.addEventListener('click', openMenuDrawer);
+    });
+    if (DOM.closeMenuBtn) {
+      DOM.closeMenuBtn.addEventListener('click', closeMenuDrawer);
     }
-    if (DOM.closeGameMenuBtn) {
-      DOM.closeGameMenuBtn.addEventListener('click', closeGameMenu);
+    if (DOM.menuDrawerOverlay) {
+      DOM.menuDrawerOverlay.addEventListener('click', (e) => {
+        if (e.target === DOM.menuDrawerOverlay) closeMenuDrawer();
+      });
     }
-    if (DOM.gameMenuOverlay) {
-      DOM.gameMenuOverlay.addEventListener('click', closeGameMenu);
-    }
-
     if (DOM.selectSpectrogramBtn) {
-      DOM.selectSpectrogramBtn.addEventListener('click', () => switchGameMode('spectrogram'));
+      DOM.selectSpectrogramBtn.addEventListener('click', () => switchAppMode('spectrogram'));
     }
     if (DOM.selectGame2Btn) {
-      DOM.selectGame2Btn.addEventListener('click', () => switchGameMode('game2'));
+      DOM.selectGame2Btn.addEventListener('click', () => switchAppMode('game2'));
     }
-    if (DOM.returnToSpectrogramBtn) {
-      DOM.returnToSpectrogramBtn.addEventListener('click', () => switchGameMode('spectrogram'));
+
+    // Game 2 Control Event Listeners
+    if (DOM.g2RecordRefBtn) {
+      DOM.g2RecordRefBtn.addEventListener('click', g2ToggleRecordRef);
+    }
+    if (DOM.g2PlayRefBtn) {
+      DOM.g2PlayRefBtn.addEventListener('click', g2PlayRef);
+    }
+    if (DOM.g2StartMatchBtn) {
+      DOM.g2StartMatchBtn.addEventListener('click', g2ToggleMatch);
+    }
+    if (DOM.g2ResetBtn) {
+      DOM.g2ResetBtn.addEventListener('click', g2Reset);
     }
   }
 
-  function openGameMenu() {
-    if (DOM.gameMenuDrawer) DOM.gameMenuDrawer.classList.remove('hidden');
-    if (DOM.gameMenuOverlay) DOM.gameMenuOverlay.classList.remove('hidden');
+  let currentAppMode = 'spectrogram'; // 'spectrogram' | 'game2'
+
+  function openMenuDrawer() {
+    if (DOM.menuDrawerOverlay) {
+      DOM.menuDrawerOverlay.classList.remove('hidden');
+    }
   }
 
-  function closeGameMenu() {
-    if (DOM.gameMenuDrawer) DOM.gameMenuDrawer.classList.add('hidden');
-    if (DOM.gameMenuOverlay) DOM.gameMenuOverlay.classList.add('hidden');
+  function closeMenuDrawer() {
+    if (DOM.menuDrawerOverlay) {
+      DOM.menuDrawerOverlay.classList.add('hidden');
+    }
   }
 
-  function switchGameMode(mode) {
-    closeGameMenu();
+  function switchAppMode(mode) {
+    currentAppMode = mode;
     if (mode === 'spectrogram') {
-      if (DOM.spectrogramView) DOM.spectrogramView.classList.remove('hidden');
-      if (DOM.game2View) DOM.game2View.classList.add('hidden');
-      if (DOM.spectrogramHeaderActions) DOM.spectrogramHeaderActions.classList.remove('hidden');
-      if (DOM.micStatus) DOM.micStatus.classList.remove('hidden');
-      if (DOM.pitchTunerHud) DOM.pitchTunerHud.classList.toggle('hidden', !config.showTunerHUD);
-
-      if (DOM.selectSpectrogramBtn) {
-        DOM.selectSpectrogramBtn.classList.add('active');
-        const badge = DOM.selectSpectrogramBtn.querySelector('.game-card-badge');
-        if (badge) { badge.textContent = 'Active'; badge.classList.remove('placeholder'); }
-      }
-      if (DOM.selectGame2Btn) {
-        DOM.selectGame2Btn.classList.remove('active');
-        const badge = DOM.selectGame2Btn.querySelector('.game-card-badge');
-        if (badge) { badge.textContent = 'Select'; badge.classList.add('placeholder'); }
-      }
+      if (DOM.viewSpectrogram) DOM.viewSpectrogram.classList.remove('hidden');
+      if (DOM.viewGame2) DOM.viewGame2.classList.add('hidden');
+      if (DOM.selectSpectrogramBtn) DOM.selectSpectrogramBtn.classList.add('active');
+      if (DOM.selectGame2Btn) DOM.selectGame2Btn.classList.remove('active');
       setTimeout(resizeCanvases, 100);
     } else if (mode === 'game2') {
-      // Pause audio processing & release mic hardware
-      if (isRunning) {
-        stopMicrophone();
-      }
-
-      if (DOM.spectrogramView) DOM.spectrogramView.classList.add('hidden');
-      if (DOM.game2View) DOM.game2View.classList.remove('hidden');
-      if (DOM.spectrogramHeaderActions) DOM.spectrogramHeaderActions.classList.add('hidden');
-      if (DOM.micStatus) DOM.micStatus.classList.add('hidden');
-      if (DOM.pitchTunerHud) DOM.pitchTunerHud.classList.add('hidden');
-
-      if (DOM.selectSpectrogramBtn) {
-        DOM.selectSpectrogramBtn.classList.remove('active');
-        const badge = DOM.selectSpectrogramBtn.querySelector('.game-card-badge');
-        if (badge) { badge.textContent = 'Select'; badge.classList.add('placeholder'); }
-      }
-      if (DOM.selectGame2Btn) {
-        DOM.selectGame2Btn.classList.add('active');
-        const badge = DOM.selectGame2Btn.querySelector('.game-card-badge');
-        if (badge) { badge.textContent = 'Active'; badge.classList.remove('placeholder'); }
-      }
+      if (DOM.viewSpectrogram) DOM.viewSpectrogram.classList.add('hidden');
+      if (DOM.viewGame2) DOM.viewGame2.classList.remove('hidden');
+      if (DOM.selectSpectrogramBtn) DOM.selectSpectrogramBtn.classList.remove('active');
+      if (DOM.selectGame2Btn) DOM.selectGame2Btn.classList.add('active');
+      setTimeout(() => {
+        resizeGame2Canvases();
+      }, 100);
     }
+    closeMenuDrawer();
   }
 
   // --- Audio Engine ---
@@ -686,12 +703,14 @@
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (errConstraint) {
-        console.warn('Advanced constraint getUserMedia failed, falling back to standard audio:', errConstraint);
-        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      }
-
-      if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
+        console.warn('Exact deviceId constraint failed, falling back to basic audio:', errConstraint);
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
       }
 
       sourceNode = audioCtx.createMediaStreamSource(mediaStream);
@@ -820,6 +839,9 @@
 
       analyserNode.getFloatFrequencyData(frequencyData);
       analyserNode.getByteTimeDomainData(timeData);
+
+      // Process Game 2 Spectral Matcher if active
+      processGame2LiveFrame(frequencyData);
 
       // Update Audio Level Meter
       updateAudioLevelMeter();
@@ -2283,6 +2305,828 @@
     activePianoVoices.forEach((voice, freq) => {
       stopPianoTone(freq, voice.keyElem, true);
     });
+  }
+
+  // --- Game 2: Spectral Echo Matcher & Vocal Challenge Engine ---
+  let g2State = {
+    isRecordingRef: false,
+    isPlayingRef: false,
+    isMatching: false,
+    refSpectra: [],
+    refMediaRecorder: null,
+    recordedChunks: [],
+    refAudioUrl: null,
+    refAudioElement: null,
+    matchScores: [],
+    attemptSpectra: [],
+    refDurationSec: 0,
+    startTime: 0,
+    matchStartTime: 0,
+    lastMatchX: 0,
+    playAnimFrameId: null
+  };
+
+  let targetSpectroCtx = null;
+  let attemptSpectroCtx = null;
+  let targetCacheCanvas = null;
+  let targetCacheCtx = null;
+
+  async function g2ToggleRecordRef() {
+    if (g2State.isRecordingRef) {
+      g2StopRecordRef();
+    } else {
+      await g2StartRecordRef();
+    }
+  }
+
+  async function g2StartRecordRef() {
+    if (!isRunning) {
+      await startMicrophone();
+    }
+    if (!mediaStream) return;
+
+    g2State.isRecordingRef = true;
+    g2State.refSpectra = [];
+    g2State.recordedChunks = [];
+    g2State.startTime = performance.now();
+
+    if (DOM.g2RecordRefBtnText) DOM.g2RecordRefBtnText.textContent = '⏹️ Stop Recording';
+    if (DOM.g2RecordRefBtn) DOM.g2RecordRefBtn.classList.replace('btn-primary', 'btn-accent');
+    if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Recording Target...';
+    if (DOM.g2PlayRefBtn) DOM.g2PlayRefBtn.disabled = true;
+    if (DOM.g2StartMatchBtn) DOM.g2StartMatchBtn.disabled = true;
+
+    try {
+      g2State.refMediaRecorder = new MediaRecorder(mediaStream);
+      g2State.refMediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) g2State.recordedChunks.push(e.data);
+      };
+      g2State.refMediaRecorder.onstop = () => {
+        const blob = new Blob(g2State.recordedChunks, { type: 'audio/webm' });
+        if (g2State.refAudioUrl) URL.revokeObjectURL(g2State.refAudioUrl);
+        g2State.refAudioUrl = URL.createObjectURL(blob);
+        g2State.refAudioElement = new Audio(g2State.refAudioUrl);
+      };
+      g2State.refMediaRecorder.start();
+    } catch (err) {
+      console.warn('MediaRecorder notice:', err);
+    }
+  }
+
+  function g2StopRecordRef() {
+    g2State.isRecordingRef = false;
+    g2State.refDurationSec = (performance.now() - g2State.startTime) / 1000;
+
+    if (g2State.refMediaRecorder && g2State.refMediaRecorder.state !== 'inactive') {
+      g2State.refMediaRecorder.stop();
+    }
+
+    if (DOM.g2RecordRefBtnText) DOM.g2RecordRefBtnText.textContent = '🔴 Record Target';
+    if (DOM.g2RecordRefBtn) DOM.g2RecordRefBtn.classList.replace('btn-accent', 'btn-primary');
+    if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Target Recorded';
+    if (DOM.targetDurationBadge) DOM.targetDurationBadge.textContent = `${g2State.refDurationSec.toFixed(1)}s`;
+
+    if (DOM.g2PlayRefBtn) DOM.g2PlayRefBtn.disabled = false;
+    if (DOM.g2StartMatchBtn) DOM.g2StartMatchBtn.disabled = false;
+
+    if (DOM.g2RatingBadge) DOM.g2RatingBadge.textContent = 'READY TO ATTEMPT';
+
+    redrawTargetSpectrogram();
+  }
+
+  function g2PlayRef() {
+    if (!g2State.refAudioElement) return;
+
+    g2State.isPlayingRef = true;
+    g2State.refAudioElement.currentTime = 0;
+    g2State.refAudioElement.play();
+
+    if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Replaying Target...';
+
+    const animatePlayback = () => {
+      if (g2State.refAudioElement && !g2State.refAudioElement.paused) {
+        const progress = g2State.refAudioElement.currentTime / g2State.refAudioElement.duration;
+        redrawTargetSpectrogram(progress);
+        g2State.playAnimFrameId = requestAnimationFrame(animatePlayback);
+      } else {
+        g2State.isPlayingRef = false;
+        if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Target Playback Ended';
+        redrawTargetSpectrogram();
+      }
+    };
+    animatePlayback();
+  }
+
+  async function g2ToggleMatch() {
+    if (g2State.isMatching) {
+      g2StopMatch();
+    } else {
+      await g2StartMatch();
+    }
+  }
+
+  async function g2StartMatch() {
+    if (!isRunning) {
+      await startMicrophone();
+    }
+    g2State.isMatching = true;
+    g2State.attemptSpectra = [];
+    g2State.matchScores = [];
+    g2State.matchStartTime = performance.now();
+    g2State.lastMatchX = 0;
+
+    if (DOM.g2StartMatchBtnText) DOM.g2StartMatchBtnText.textContent = '⏹️ Stop Attempt';
+    if (DOM.g2StartMatchBtn) DOM.g2StartMatchBtn.classList.replace('btn-accent', 'btn-secondary');
+    if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Matching Live Attempt...';
+    if (DOM.attemptStatusBadge) DOM.attemptStatusBadge.textContent = 'MATCHING LIVE';
+
+    // Clear attempt canvas to dark background
+    if (!attemptSpectroCtx && DOM.attemptSpectrogramCanvas) {
+      attemptSpectroCtx = DOM.attemptSpectrogramCanvas.getContext('2d');
+    }
+    if (attemptSpectroCtx && DOM.attemptSpectrogramCanvas) {
+      attemptSpectroCtx.fillStyle = '#030509';
+      attemptSpectroCtx.fillRect(0, 0, DOM.attemptSpectrogramCanvas.width, DOM.attemptSpectrogramCanvas.height);
+    }
+
+    // Automatically trigger audio playback of recorded target so user can sing along!
+    if (g2State.refAudioElement) {
+      g2State.refAudioElement.currentTime = 0;
+      g2State.refAudioElement.play();
+    }
+  }
+
+  function g2StopMatch() {
+    g2State.isMatching = false;
+    if (g2State.refAudioElement) {
+      g2State.refAudioElement.pause();
+    }
+    if (DOM.g2StartMatchBtnText) DOM.g2StartMatchBtnText.textContent = '🎤 Start Attempt';
+    if (DOM.g2StartMatchBtn) DOM.g2StartMatchBtn.classList.replace('btn-secondary', 'btn-accent');
+    if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Attempt Completed';
+
+    // Auto-detect and align microphone/device output latency!
+    autoDetectAndAlignLatency();
+
+    redrawTargetSpectrogram();
+    redrawAttemptSpectrogram();
+  }
+
+  function g2Reset() {
+    g2State.isRecordingRef = false;
+    g2State.isPlayingRef = false;
+    g2State.isMatching = false;
+    g2State.refSpectra = [];
+    g2State.attemptSpectra = [];
+    g2State.matchScores = [];
+
+    if (g2State.refAudioElement) {
+      g2State.refAudioElement.pause();
+      g2State.refAudioElement = null;
+    }
+
+    if (DOM.g2RecordRefBtnText) DOM.g2RecordRefBtnText.textContent = '🔴 Record Target';
+    if (DOM.g2PlayRefBtn) DOM.g2PlayRefBtn.disabled = true;
+    if (DOM.g2StartMatchBtn) DOM.g2StartMatchBtn.disabled = true;
+    if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Idle';
+    if (DOM.targetDurationBadge) DOM.targetDurationBadge.textContent = '0.0s';
+    if (DOM.attemptStatusBadge) DOM.attemptStatusBadge.textContent = 'READY';
+
+    if (DOM.g2ScoreVal) DOM.g2ScoreVal.textContent = '0%';
+    if (DOM.g2ScoreBarFill) DOM.g2ScoreBarFill.style.width = '0%';
+    if (DOM.g2RatingBadge) {
+      DOM.g2RatingBadge.textContent = 'RECORD TARGET FIRST';
+      DOM.g2RatingBadge.className = 'rating-badge';
+    }
+
+    if (targetSpectroCtx && DOM.targetSpectrogramCanvas) {
+      targetSpectroCtx.clearRect(0, 0, DOM.targetSpectrogramCanvas.width, DOM.targetSpectrogramCanvas.height);
+    }
+    if (attemptSpectroCtx && DOM.attemptSpectrogramCanvas) {
+      attemptSpectroCtx.clearRect(0, 0, DOM.attemptSpectrogramCanvas.width, DOM.attemptSpectrogramCanvas.height);
+    }
+  }
+
+  function resizeGame2Canvases() {
+    if (!DOM.targetSpectrogramCanvas || !DOM.attemptSpectrogramCanvas) return;
+    const parentTarget = DOM.targetSpectrogramCanvas.parentElement;
+    const parentAttempt = DOM.attemptSpectrogramCanvas.parentElement;
+    if (parentTarget && parentAttempt) {
+      const rectTarget = parentTarget.getBoundingClientRect();
+      const rectAttempt = parentAttempt.getBoundingClientRect();
+      if (rectTarget.width > 0 && rectTarget.height > 0) {
+        DOM.targetSpectrogramCanvas.width = Math.floor(rectTarget.width);
+        DOM.targetSpectrogramCanvas.height = Math.floor(rectTarget.height);
+        redrawTargetSpectrogram();
+      }
+      if (rectAttempt.width > 0 && rectAttempt.height > 0) {
+        DOM.attemptSpectrogramCanvas.width = Math.floor(rectAttempt.width);
+        DOM.attemptSpectrogramCanvas.height = Math.floor(rectAttempt.height);
+      }
+    }
+  }
+
+  function drawColumnToCanvas(canvas, ctx, frequencyData) {
+    if (!canvas || !ctx || !frequencyData) return;
+    const width = canvas.width;
+    const height = canvas.height;
+    if (width === 0 || height === 0) return;
+
+    const speed = 2;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(canvas, 0, 0);
+
+    ctx.fillStyle = '#030509';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(tempCanvas, -speed, 0);
+
+    const colImg = ctx.createImageData(speed, height);
+    const data = colImg.data;
+    const lut = COLORMAPS[config.colormap] || COLORMAPS.viridis;
+    const nyquist = sampleRate / 2;
+    const numBins = frequencyData.length;
+    const minFreq = 20;
+    const maxFreq = Math.min(config.maxFreq, nyquist);
+    const logMin = Math.log10(minFreq);
+    const logMax = Math.log10(maxFreq);
+
+    for (let y = 0; y < height; y++) {
+      const normY = 1 - (y / (height - 1));
+      let freq = normY * maxFreq;
+      if (config.scale === 'logarithmic') {
+        freq = Math.pow(10, logMin + normY * (logMax - logMin));
+      }
+
+      const binFloat = (freq / nyquist) * numBins;
+      const binLow = Math.floor(binFloat);
+      const binHigh = Math.min(numBins - 1, binLow + 1);
+      const weight = binFloat - binLow;
+
+      let db = -100;
+      if (binLow >= 0 && binHigh < numBins) {
+        db = frequencyData[binLow] * (1 - weight) + frequencyData[binHigh] * weight;
+      }
+
+      const currentGate = config.autoAdjust ? effectiveNoiseGate : config.noiseGate;
+      const currentGain = config.autoAdjust ? effectiveGain : config.gain;
+      const currentContrast = config.autoAdjust ? effectiveContrast : config.contrast;
+
+      if (db < currentGate) db = -100;
+      let normVal = Math.max(0, Math.min(1, (db + 100) / 100));
+      normVal = Math.pow(Math.min(1, normVal * currentGain), currentContrast);
+      const colorIdx = Math.min(255, Math.max(0, Math.floor(normVal * 255)));
+      const color = lut[colorIdx];
+
+      for (let s = 0; s < speed; s++) {
+        const pixelIdx = (y * speed + s) * 4;
+        data[pixelIdx] = color[0];
+        data[pixelIdx + 1] = color[1];
+        data[pixelIdx + 2] = color[2];
+        data[pixelIdx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(colImg, width - speed, 0);
+  }
+
+  function redrawTargetSpectrogram(progress = null) {
+    if (!DOM.targetSpectrogramCanvas) return;
+    if (!targetSpectroCtx) {
+      targetSpectroCtx = DOM.targetSpectrogramCanvas.getContext('2d');
+    }
+    const ctx = targetSpectroCtx;
+    if (!ctx) return;
+
+    const width = DOM.targetSpectrogramCanvas.width;
+    const height = DOM.targetSpectrogramCanvas.height;
+    if (width === 0 || height === 0) return;
+
+    if (!targetCacheCanvas) {
+      targetCacheCanvas = document.createElement('canvas');
+    }
+    if (targetCacheCanvas.width !== width || targetCacheCanvas.height !== height) {
+      targetCacheCanvas.width = width;
+      targetCacheCanvas.height = height;
+      targetCacheCtx = targetCacheCanvas.getContext('2d');
+    }
+
+    if (progress === null || !targetCacheCtx) {
+      if (!targetCacheCtx) targetCacheCtx = targetCacheCanvas.getContext('2d');
+      targetCacheCtx.fillStyle = '#030509';
+      targetCacheCtx.fillRect(0, 0, width, height);
+
+      const spectra = g2State.refSpectra;
+      if (spectra && spectra.length > 0) {
+        const frameWidth = width / spectra.length;
+        const lut = COLORMAPS[config.colormap] || COLORMAPS.viridis;
+        const nyquist = sampleRate / 2;
+        const minFreq = 20;
+        const maxFreq = Math.min(config.maxFreq, nyquist);
+        const logMin = Math.log10(minFreq);
+        const logMax = Math.log10(maxFreq);
+
+        for (let t = 0; t < spectra.length; t++) {
+          const frame = spectra[t];
+          const x = t * frameWidth;
+          const numBins = frame.length;
+
+          for (let y = 0; y < height; y++) {
+            const normY = 1 - (y / (height - 1));
+            let freq = normY * maxFreq;
+            if (config.scale === 'logarithmic') {
+              freq = Math.pow(10, logMin + normY * (logMax - logMin));
+            }
+
+            const binFloat = (freq / nyquist) * numBins;
+            const binLow = Math.floor(binFloat);
+            const binHigh = Math.min(numBins - 1, binLow + 1);
+            const weight = binFloat - binLow;
+
+            let db = -100;
+            if (binLow >= 0 && binHigh < numBins) {
+              db = frame[binLow] * (1 - weight) + frame[binHigh] * weight;
+            }
+
+            const currentGate = config.autoAdjust ? effectiveNoiseGate : config.noiseGate;
+            const currentGain = config.autoAdjust ? effectiveGain : config.gain;
+            const currentContrast = config.autoAdjust ? effectiveContrast : config.contrast;
+
+            if (db < currentGate) db = -100;
+            let normVal = Math.max(0, Math.min(1, (db + 100) / 100));
+            normVal = Math.pow(Math.min(1, normVal * currentGain), currentContrast);
+            const colorIdx = Math.min(255, Math.max(0, Math.floor(normVal * 255)));
+            const color = lut[colorIdx];
+
+            targetCacheCtx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+            targetCacheCtx.fillRect(x, y, Math.ceil(frameWidth), 1);
+          }
+        }
+      }
+    }
+
+    ctx.drawImage(targetCacheCanvas, 0, 0);
+
+    if (progress !== null) {
+      const cursorX = width * progress;
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cursorX, 0);
+      ctx.lineTo(cursorX, height);
+      ctx.stroke();
+    }
+  }
+
+  function redrawAttemptSpectrogram(progress = null) {
+    if (!DOM.attemptSpectrogramCanvas) return;
+    if (!attemptSpectroCtx) {
+      attemptSpectroCtx = DOM.attemptSpectrogramCanvas.getContext('2d');
+    }
+    const ctx = attemptSpectroCtx;
+    if (!ctx) return;
+
+    const width = DOM.attemptSpectrogramCanvas.width;
+    const height = DOM.attemptSpectrogramCanvas.height;
+    if (width === 0 || height === 0) return;
+
+    ctx.fillStyle = '#030509';
+    ctx.fillRect(0, 0, width, height);
+
+    const spectra = g2State.alignedAttemptSpectra || g2State.attemptSpectra;
+    if (!spectra || spectra.length === 0) return;
+
+    const frameWidth = width / spectra.length;
+    const lut = COLORMAPS[config.colormap] || COLORMAPS.viridis;
+    const nyquist = sampleRate / 2;
+    const minFreq = 20;
+    const maxFreq = Math.min(config.maxFreq, nyquist);
+    const logMin = Math.log10(minFreq);
+    const logMax = Math.log10(maxFreq);
+
+    for (let t = 0; t < spectra.length; t++) {
+      const frame = spectra[t];
+      const x = t * frameWidth;
+      const numBins = frame.length;
+
+      for (let y = 0; y < height; y++) {
+        const normY = 1 - (y / (height - 1));
+        let freq = normY * maxFreq;
+        if (config.scale === 'logarithmic') {
+          freq = Math.pow(10, logMin + normY * (logMax - logMin));
+        }
+
+        const binFloat = (freq / nyquist) * numBins;
+        const binLow = Math.floor(binFloat);
+        const binHigh = Math.min(numBins - 1, binLow + 1);
+        const weight = binFloat - binLow;
+
+        let db = -100;
+        if (binLow >= 0 && binHigh < numBins) {
+          db = frame[binLow] * (1 - weight) + frame[binHigh] * weight;
+        }
+
+        const currentGate = config.autoAdjust ? effectiveNoiseGate : config.noiseGate;
+        const currentGain = config.autoAdjust ? effectiveGain : config.gain;
+        const currentContrast = config.autoAdjust ? effectiveContrast : config.contrast;
+
+        if (db < currentGate) db = -100;
+        let normVal = Math.max(0, Math.min(1, (db + 100) / 100));
+        normVal = Math.pow(Math.min(1, normVal * currentGain), currentContrast);
+        const colorIdx = Math.min(255, Math.max(0, Math.floor(normVal * 255)));
+        const color = lut[colorIdx];
+
+        ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+        ctx.fillRect(x, y, Math.ceil(frameWidth), 1);
+      }
+    }
+
+    if (progress !== null) {
+      const cursorX = width * progress;
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cursorX, 0);
+      ctx.lineTo(cursorX, height);
+      ctx.stroke();
+    }
+  }
+
+  function computeSpectralSimilarity(liveFrame, refFrame) {
+    if (!liveFrame || !refFrame) return 0;
+
+    let dotProduct = 0;
+    let normA = 0;
+    let normB = 0;
+    const length = Math.min(liveFrame.length, refFrame.length);
+
+    for (let i = 0; i < length; i++) {
+      const a = Math.max(0, liveFrame[i] + 100);
+      const b = Math.max(0, refFrame[i] + 100);
+      dotProduct += a * b;
+      normA += a * a;
+      normB += b * b;
+    }
+
+    if (normA === 0 || normB === 0) return 0;
+    const cosineSim = dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    return Math.max(0, Math.min(1, cosineSim));
+  }
+
+  function extractFastPitchAndNote(frame) {
+    if (!frame || frame.length === 0) return { freq: 0, note: '---', isPercussive: false, energy: -100 };
+
+    let maxDb = -100;
+    let maxBin = 0;
+    let totalEnergy = 0;
+    const nyquist = sampleRate / 2;
+    const numBins = frame.length;
+    const searchMaxBin = Math.floor((4000 / nyquist) * numBins);
+
+    for (let i = 2; i < searchMaxBin; i++) {
+      const db = frame[i];
+      if (db > -90) totalEnergy += Math.pow(10, db / 20);
+      if (db > maxDb) {
+        maxDb = db;
+        maxBin = i;
+      }
+    }
+
+    if (maxDb < -65) {
+      return { freq: 0, note: '---', isPercussive: false, energy: maxDb };
+    }
+
+    let exactBin = maxBin;
+    if (maxBin > 0 && maxBin < numBins - 1) {
+      const alpha = frame[maxBin - 1];
+      const beta = frame[maxBin];
+      const gamma = frame[maxBin + 1];
+      const denom = alpha - 2 * beta + gamma;
+      if (Math.abs(denom) > 0.00001) {
+        const delta = 0.5 * (alpha - gamma) / denom;
+        exactBin = maxBin + Math.max(-0.5, Math.min(0.5, delta));
+      }
+    }
+
+    const freq = Math.round(exactBin * (sampleRate / (numBins * 2)));
+
+    let harmonicEnergy = 0;
+    for (let h = -2; h <= 2; h++) {
+      const b = Math.round(maxBin + h);
+      if (b >= 0 && b < numBins) harmonicEnergy += Math.pow(10, frame[b] / 20);
+    }
+
+    const tonalityRatio = totalEnergy > 0 ? (harmonicEnergy / totalEnergy) : 0;
+    const isPitched = tonalityRatio > 0.22 && freq >= 50 && freq <= 3500;
+
+    if (isPitched) {
+      const note = freqToNote(freq);
+      return { freq, note, isPercussive: false, energy: maxDb };
+    } else {
+      return { freq: 0, note: '🥁 DRUM', isPercussive: true, energy: maxDb };
+    }
+  }
+
+  function extractFramePeakEnergy(frame) {
+    if (!frame) return -100;
+    let maxDb = -100;
+    for (let i = 0; i < frame.length; i++) {
+      if (frame[i] > maxDb) maxDb = frame[i];
+    }
+    return maxDb;
+  }
+
+  function computeAdvancedMusicalMatch(attFrame, refFrame) {
+    if (!attFrame || !refFrame) return 0;
+
+    const refInfo = extractFastPitchAndNote(refFrame);
+    const attInfo = extractFastPitchAndNote(attFrame);
+
+    const silenceThreshold = -65;
+    const refActive = refInfo.energy > silenceThreshold;
+    const attActive = attInfo.energy > silenceThreshold;
+
+    if (!refActive && !attActive) {
+      return null;
+    }
+
+    if (refActive && !attActive) {
+      return 0.0;
+    }
+
+    if (!refActive && attActive) {
+      return 0.1;
+    }
+
+    // CASE 1: TARGET IS A DRUM / PERCUSSIVE STRIKE (NO PITCH NOTE)
+    if (refInfo.isPercussive || refInfo.freq === 0) {
+      const shapeSim = computeSpectralSimilarity(attFrame, refFrame);
+      const energyDiff = Math.abs(refInfo.energy - attInfo.energy);
+      const energyScore = Math.max(0, 1 - (energyDiff / 30));
+
+      // Up to 100% (1.0) score for hitting all drum strikes on time with matching timbre & volume!
+      const drumScore = (shapeSim * 0.70) + (energyScore * 0.30);
+      return Math.max(0.0, Math.min(1.0, drumScore));
+    }
+
+    // CASE 2: TARGET IS A PITCHED NOTE (VOCALS / INSTRUMENT)
+    if (refInfo.freq > 0 && attInfo.freq > 0) {
+      const centsDiff = Math.abs(1200 * Math.log2(attInfo.freq / refInfo.freq));
+
+      let pitchScore = 0;
+      if (centsDiff <= 25) {
+        pitchScore = 1.0;
+      } else if (centsDiff <= 50) {
+        pitchScore = 0.92;
+      } else if (centsDiff <= 100) {
+        pitchScore = 0.78;
+      } else if (centsDiff <= 200) {
+        pitchScore = 0.45;
+      } else if (centsDiff <= 400) {
+        pitchScore = 0.20;
+      } else {
+        pitchScore = 0.05;
+      }
+
+      const shapeSim = computeSpectralSimilarity(attFrame, refFrame);
+      const vocalScore = (pitchScore * 0.75) + (shapeSim * 0.25);
+      return Math.max(0.0, Math.min(1.0, vocalScore));
+    }
+
+    const shapeSim = computeSpectralSimilarity(attFrame, refFrame);
+    return Math.max(0.0, Math.min(1.0, shapeSim * 0.6));
+  }
+
+  function autoDetectAndAlignLatency() {
+    const refSpectra = g2State.refSpectra;
+    const attSpectra = g2State.attemptSpectra;
+
+    if (!refSpectra || !attSpectra || refSpectra.length === 0 || attSpectra.length === 0) return 0;
+
+    const maxShiftFrames = 30;
+    const minShiftFrames = -10;
+
+    let bestShift = 0;
+    let maxTotalScore = -1;
+
+    for (let shift = minShiftFrames; shift <= maxShiftFrames; shift++) {
+      let sumScore = 0;
+      let count = 0;
+
+      for (let t = 0; t < refSpectra.length; t++) {
+        const attIndex = t + shift;
+        if (attIndex >= 0 && attIndex < attSpectra.length) {
+          const matchScore = computeAdvancedMusicalMatch(attSpectra[attIndex], refSpectra[t]);
+          if (matchScore !== null) {
+            sumScore += matchScore;
+            count++;
+          }
+        }
+      }
+
+      if (count > 0) {
+        const avgScore = sumScore / count;
+        if (avgScore > maxTotalScore) {
+          maxTotalScore = avgScore;
+          bestShift = shift;
+        }
+      }
+    }
+
+    const msPerFrame = (g2State.refDurationSec * 1000) / refSpectra.length;
+    const detectedLatencyMs = Math.round(bestShift * msPerFrame);
+    g2State.detectedLatencyMs = detectedLatencyMs;
+    g2State.bestFrameShift = bestShift;
+
+    if (bestShift !== 0) {
+      const alignedAttempt = new Array(refSpectra.length);
+      for (let t = 0; t < refSpectra.length; t++) {
+        const srcIdx = t + bestShift;
+        if (srcIdx >= 0 && srcIdx < attSpectra.length) {
+          alignedAttempt[t] = attSpectra[srcIdx];
+        } else {
+          alignedAttempt[t] = new Float32Array(refSpectra[0].length).fill(-100);
+        }
+      }
+      g2State.alignedAttemptSpectra = alignedAttempt;
+    } else {
+      g2State.alignedAttemptSpectra = attSpectra;
+    }
+
+    const scorePercent = Math.max(0, Math.min(100, Math.round(maxTotalScore * 100)));
+    g2State.finalCompensatedScore = scorePercent;
+
+    if (DOM.g2ScoreVal) DOM.g2ScoreVal.textContent = `${scorePercent}%`;
+    if (DOM.g2ScoreBarFill) DOM.g2ScoreBarFill.style.width = `${scorePercent}%`;
+
+    if (DOM.g2RatingBadge) {
+      if (scorePercent >= 85) {
+        DOM.g2RatingBadge.textContent = '🌟 PERFECT MATCH!';
+        DOM.g2RatingBadge.className = 'rating-badge perfect';
+      } else if (scorePercent >= 70) {
+        DOM.g2RatingBadge.textContent = '🔥 GREAT VOCAL MATCH!';
+        DOM.g2RatingBadge.className = 'rating-badge great';
+      } else if (scorePercent >= 45) {
+        DOM.g2RatingBadge.textContent = '👍 GOOD ATTEMPT';
+        DOM.g2RatingBadge.className = 'rating-badge good';
+      } else {
+        DOM.g2RatingBadge.textContent = 'KEEP TRYING...';
+        DOM.g2RatingBadge.className = 'rating-badge';
+      }
+    }
+
+    if (DOM.attemptStatusBadge) {
+      const latStr = detectedLatencyMs >= 0 ? `+${detectedLatencyMs}ms` : `${detectedLatencyMs}ms`;
+      DOM.attemptStatusBadge.textContent = `LATENCY ALIGNED (${latStr})`;
+    }
+
+    return detectedLatencyMs;
+  }
+
+  function drawFrameToCanvasAtX(canvas, ctx, frequencyData, xPos, colWidth) {
+    if (!canvas || !ctx || !frequencyData) return;
+    const width = canvas.width;
+    const height = canvas.height;
+    if (width === 0 || height === 0) return;
+
+    const w = Math.max(2, Math.ceil(colWidth));
+    const colImg = ctx.createImageData(w, height);
+    const data = colImg.data;
+    const lut = COLORMAPS[config.colormap] || COLORMAPS.viridis;
+    const nyquist = sampleRate / 2;
+    const numBins = frequencyData.length;
+    const minFreq = 20;
+    const maxFreq = Math.min(config.maxFreq, nyquist);
+    const logMin = Math.log10(minFreq);
+    const logMax = Math.log10(maxFreq);
+
+    for (let y = 0; y < height; y++) {
+      const normY = 1 - (y / (height - 1));
+      let freq = normY * maxFreq;
+      if (config.scale === 'logarithmic') {
+        freq = Math.pow(10, logMin + normY * (logMax - logMin));
+      }
+
+      const binFloat = (freq / nyquist) * numBins;
+      const binLow = Math.floor(binFloat);
+      const binHigh = Math.min(numBins - 1, binLow + 1);
+      const weight = binFloat - binLow;
+
+      let db = -100;
+      if (binLow >= 0 && binHigh < numBins) {
+        db = frequencyData[binLow] * (1 - weight) + frequencyData[binHigh] * weight;
+      }
+
+      const currentGate = config.autoAdjust ? effectiveNoiseGate : config.noiseGate;
+      const currentGain = config.autoAdjust ? effectiveGain : config.gain;
+      const currentContrast = config.autoAdjust ? effectiveContrast : config.contrast;
+
+      if (db < currentGate) db = -100;
+      let normVal = Math.max(0, Math.min(1, (db + 100) / 100));
+      normVal = Math.pow(Math.min(1, normVal * currentGain), currentContrast);
+      const colorIdx = Math.min(255, Math.max(0, Math.floor(normVal * 255)));
+      const color = lut[colorIdx];
+
+      for (let s = 0; s < w; s++) {
+        const pixelIdx = (y * w + s) * 4;
+        data[pixelIdx] = color[0];
+        data[pixelIdx + 1] = color[1];
+        data[pixelIdx + 2] = color[2];
+        data[pixelIdx + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(colImg, Math.max(0, Math.floor(xPos)), 0);
+  }
+
+  function processGame2LiveFrame(liveFrequencyData) {
+    // Case 1: Recording Target Audio
+    if (g2State.isRecordingRef && DOM.targetSpectrogramCanvas) {
+      const frameCopy = new Float32Array(liveFrequencyData);
+      g2State.refSpectra.push(frameCopy);
+
+      if (!targetSpectroCtx) {
+        targetSpectroCtx = DOM.targetSpectrogramCanvas.getContext('2d');
+      }
+      drawColumnToCanvas(DOM.targetSpectrogramCanvas, targetSpectroCtx, liveFrequencyData);
+
+      // Live note badge update during target recording
+      const refInfo = extractFastPitchAndNote(liveFrequencyData);
+      if (DOM.targetNoteBadge) DOM.targetNoteBadge.textContent = `Note: ${refInfo.note}`;
+    }
+
+    // Case 2: Live Attempt (Synchronized Time-Aligned Left-to-Right Engine)
+    if (g2State.isMatching && DOM.attemptSpectrogramCanvas && g2State.refDurationSec > 0) {
+      if (!attemptSpectroCtx) {
+        attemptSpectroCtx = DOM.attemptSpectrogramCanvas.getContext('2d');
+      }
+      const ctx = attemptSpectroCtx;
+      const canvas = DOM.attemptSpectrogramCanvas;
+      const width = canvas.width;
+      const height = canvas.height;
+
+      const elapsedSec = (performance.now() - g2State.matchStartTime) / 1000;
+      const progress = Math.min(1.0, elapsedSec / g2State.refDurationSec);
+      const posX = Math.floor(progress * width);
+
+      if (width > 0 && height > 0) {
+        const stepWidth = Math.max(3, posX - g2State.lastMatchX);
+        drawFrameToCanvasAtX(canvas, ctx, liveFrequencyData, g2State.lastMatchX, stepWidth);
+        g2State.lastMatchX = posX;
+
+        // Update playback sweep line on top target canvas to match bottom attempt cursor!
+        redrawTargetSpectrogram(progress);
+      }
+
+      // Save live frame for attempt summary
+      const frameCopy = new Float32Array(liveFrequencyData);
+      g2State.attemptSpectra.push(frameCopy);
+
+      // Calculate Real-time Pitch & Rhythm Match against reference clip frame & Update Live HUD Note Badges!
+      if (g2State.refSpectra.length > 0) {
+        const frameIndex = Math.min(g2State.refSpectra.length - 1, Math.floor(progress * g2State.refSpectra.length));
+        const refFrame = g2State.refSpectra[frameIndex];
+
+        const refInfo = extractFastPitchAndNote(refFrame);
+        const attInfo = extractFastPitchAndNote(liveFrequencyData);
+
+        if (DOM.targetNoteBadge) DOM.targetNoteBadge.textContent = `Target: ${refInfo.note}`;
+        if (DOM.attemptNoteBadge) DOM.attemptNoteBadge.textContent = `Your Note: ${attInfo.note}`;
+
+        const match = computeAdvancedMusicalMatch(liveFrequencyData, refFrame);
+        if (match !== null) {
+          g2State.matchScores.push(match);
+          const avgSim = g2State.matchScores.reduce((a, b) => a + b, 0) / g2State.matchScores.length;
+          const scorePercent = Math.round(avgSim * 100);
+
+          if (DOM.g2ScoreVal) DOM.g2ScoreVal.textContent = `${scorePercent}%`;
+          if (DOM.g2ScoreBarFill) DOM.g2ScoreBarFill.style.width = `${scorePercent}%`;
+
+          if (DOM.g2RatingBadge) {
+            if (scorePercent >= 85) {
+              DOM.g2RatingBadge.textContent = '🌟 PERFECT MATCH!';
+              DOM.g2RatingBadge.className = 'rating-badge perfect';
+            } else if (scorePercent >= 70) {
+              DOM.g2RatingBadge.textContent = '🔥 GREAT VOCAL MATCH!';
+              DOM.g2RatingBadge.className = 'rating-badge great';
+            } else if (scorePercent >= 45) {
+              DOM.g2RatingBadge.textContent = '👍 GOOD ATTEMPT';
+              DOM.g2RatingBadge.className = 'rating-badge good';
+            } else {
+              DOM.g2RatingBadge.textContent = 'KEEP TRYING...';
+              DOM.g2RatingBadge.className = 'rating-badge';
+            }
+          }
+        }
+      }
+
+      // Automatically complete attempt when duration matches target clip length!
+      if (progress >= 1.0) {
+        g2StopMatch();
+      }
+    }
   }
 
 })();
