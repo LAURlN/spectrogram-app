@@ -668,17 +668,16 @@
   }
 
   function updateStatusBadge() {
-    if (!DOM.micStatus || !DOM.statusText) return;
     DOM.micStatus.className = 'mic-status-badge';
     if (!isRunning) {
       DOM.micStatus.classList.add('idled');
-      DOM.statusText.textContent = '🎙️ Idle';
+      DOM.statusText.textContent = 'Microphone Idle';
     } else if (isPaused) {
       DOM.micStatus.classList.add('paused');
-      DOM.statusText.textContent = '🎙️ Paused';
+      DOM.statusText.textContent = 'Spectrogram Paused';
     } else {
       DOM.micStatus.classList.add('active');
-      DOM.statusText.textContent = '🎙️ Active';
+      DOM.statusText.textContent = 'Microphone Active (Live)';
     }
   }
 
