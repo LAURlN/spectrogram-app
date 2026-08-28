@@ -3083,9 +3083,13 @@
       const width = canvas.width;
       const height = canvas.height;
 
+      // Extend max attempt recording duration by +1.2 seconds to capture latency-delayed end notes!
+      const maxAttemptDurationSec = g2State.refDurationSec + 1.2;
       const elapsedSec = (performance.now() - g2State.matchStartTime) / 1000;
-      const progress = Math.min(1.0, elapsedSec / g2State.refDurationSec);
-      const posX = Math.floor(progress * width);
+
+      const sweepProgress = Math.min(1.0, elapsedSec / g2State.refDurationSec);
+      const overallProgress = Math.min(1.0, elapsedSec / maxAttemptDurationSec);
+      const posX = Math.floor(sweepProgress * width);
 
       if (width > 0 && height > 0) {
         const stepWidth = Math.max(3, posX - g2State.lastMatchX);
@@ -3093,7 +3097,7 @@
         g2State.lastMatchX = posX;
 
         // Update playback sweep line on top target canvas to match bottom attempt cursor!
-        redrawTargetSpectrogram(progress);
+        redrawTargetSpectrogram(sweepProgress);
       }
 
       // Save live frame for attempt summary
@@ -3102,7 +3106,7 @@
 
       // Calculate Real-time Pitch & Rhythm Match against reference clip frame & Update Live HUD Note Badges!
       if (g2State.refSpectra.length > 0) {
-        const frameIndex = Math.min(g2State.refSpectra.length - 1, Math.floor(progress * g2State.refSpectra.length));
+        const frameIndex = Math.min(g2State.refSpectra.length - 1, Math.floor(sweepProgress * g2State.refSpectra.length));
         const refFrame = g2State.refSpectra[frameIndex];
 
         const refInfo = extractFastPitchAndNote(refFrame);
@@ -3139,8 +3143,8 @@
         }
       }
 
-      // Automatically complete attempt when duration matches target clip length!
-      if (progress >= 1.0) {
+      // Automatically complete attempt when extended duration (T_ref + 1.2s) elapses!
+      if (overallProgress >= 1.0) {
         g2StopMatch();
       }
     }
