@@ -8,32 +8,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=4">
 </head>
 <body>
   <div class="app-container">
     <!-- Top Navigation Header -->
     <header class="app-header">
-      <div class="brand">
-        <div class="logo-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 12V15M8 9V18M12 4V20M16 8V17M20 11V14" stroke="url(#logo_grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <defs>
-              <linearGradient id="logo_grad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-                <stop stop-color="#00F0FF"/>
-                <stop offset="0.5" stop-color="#7000FF"/>
-                <stop offset="1" stop-color="#FF007A"/>
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-        <h1>AudioSpectra <span>2D</span></h1>
-      </div>
-
-      <div class="header-center">
+      <div class="header-left">
         <div class="mic-status-badge idled" id="micStatus">
           <span class="status-dot"></span>
-          <span class="status-text" id="statusText">Microphone Idle</span>
+          <span class="status-text" id="statusText">Idle</span>
         </div>
         <div class="audio-level-meter" title="Audio Input Level">
           <span class="meter-label">MIC</span>
@@ -45,54 +29,54 @@
       </div>
 
       <div class="header-actions">
-        <button class="btn btn-primary" id="toggleMicBtn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="btn btn-primary" id="toggleMicBtn" title="Start/Stop Microphone">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
             <line x1="12" y1="19" x2="12" y2="23"></line>
             <line x1="8" y1="23" x2="16" y2="23"></line>
           </svg>
-          <span id="toggleMicBtnText">Start Microphone</span>
+          <span id="toggleMicBtnText">Mic</span>
         </button>
-        <button class="btn btn-accent" id="calibrateBtn" title="Run 5-second Beatbox & Audio Calibration Wizard">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="btn btn-accent" id="calibrateBtn" title="5s Beatbox Calibration">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
             <circle cx="12" cy="12" r="6"></circle>
             <circle cx="12" cy="12" r="2"></circle>
           </svg>
-          <span>Calibrate Mic (5s)</span>
+          <span>Calib</span>
         </button>
-        <button class="btn btn-secondary" id="freezeBtn" disabled title="Freeze / Pause Spectrogram">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="btn btn-secondary" id="freezeBtn" disabled title="Freeze/Resume">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="6" y="4" width="4" height="16"></rect>
             <rect x="14" y="4" width="4" height="16"></rect>
           </svg>
           <span>Freeze</span>
         </button>
-        <button class="btn btn-secondary active" id="toggleSidebarBtn" title="Collapse / Expand Settings Panel (Left Sidebar)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="btn btn-secondary active" id="toggleSidebarBtn" title="Settings Panel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2"></rect>
             <path d="M9 3v18"></path>
           </svg>
           <span>⚙️ Settings</span>
         </button>
-        <button class="btn btn-secondary" id="exportBtn" title="Export Spectrogram Image (PNG)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Export Image</span>
-        </button>
-        <button class="btn btn-secondary active" id="togglePianoPanelBtn" title="Collapse / Expand Reference Piano Panel (Right Sidebar)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button class="btn btn-secondary active" id="togglePianoPanelBtn" title="Reference Piano">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="2" y="5" width="20" height="14" rx="2"></rect>
             <line x1="6" y1="5" x2="6" y2="13"></line>
             <line x1="10" y1="5" x2="10" y2="13"></line>
             <line x1="14" y1="5" x2="14" y2="13"></line>
             <line x1="18" y1="5" x2="18" y2="13"></line>
           </svg>
-          <span>🎹 Side Piano</span>
+          <span>🎹 Piano</span>
+        </button>
+        <button class="btn btn-secondary" id="exportBtn" title="Export Image">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Export</span>
         </button>
       </div>
     </header>
@@ -318,6 +302,32 @@
               <span>Show Real-Time FFT Spectrum Bar</span>
             </label>
           </div>
+
+          <!-- Note Visual Display Toggles -->
+          <div class="panel-section">
+            <h2>Note Display Toggles</h2>
+            <div class="control-group checkbox-group">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="showCanvasNotes" checked>
+                <span class="checkbox-box"></span>
+                <span>Show Note Badges on Spectrogram Lines</span>
+              </label>
+            </div>
+            <div class="control-group checkbox-group">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="showTunerHUD" checked>
+                <span class="checkbox-box"></span>
+                <span>Show Primary Tuner Badge on Top</span>
+              </label>
+            </div>
+            <div class="control-group checkbox-group">
+              <label class="custom-checkbox">
+                <input type="checkbox" id="showMultiNoteBar">
+                <span class="checkbox-box"></span>
+                <span>Show Active Notes List on Top</span>
+              </label>
+            </div>
+          </div>
         </div>
       </aside>
 
@@ -373,8 +383,8 @@
               </div>
             </div>
 
-            <!-- Polyphonic Multi-Note Pills Container -->
-            <div class="multi-note-bar" id="multiNoteBar">
+            <!-- Polyphonic Multi-Note Pills Container (Hidden by Default) -->
+            <div class="multi-note-bar hidden" id="multiNoteBar">
               <span class="multi-note-label">Active Notes:</span>
               <div class="multi-note-list" id="multiNoteList">
                 <span class="note-pill idle">None</span>

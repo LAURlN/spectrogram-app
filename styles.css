@@ -1446,21 +1446,26 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
 
   .app-header {
-    padding: 6px 12px;
-    height: auto;
-    min-height: 48px;
+    padding: 4px 6px;
+    height: 46px;
+    min-height: 46px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 6px;
+    gap: 4px;
+    overflow: hidden;
   }
 
-  .brand h1 {
-    font-size: 1.05rem;
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
   }
 
-  .header-center {
-    gap: 8px;
+  .mic-status-badge {
+    padding: 3px 6px;
+    font-size: 0.68rem;
   }
 
   .audio-level-meter {
@@ -1469,19 +1474,22 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
   .header-actions {
     display: flex;
-    gap: 6px;
-    overflow-x: auto;
+    align-items: center;
+    gap: 3px;
+    overflow: hidden;
+    flex-shrink: 0;
   }
 
   .btn {
-    padding: 5px 9px;
-    font-size: 0.75rem;
-    white-space: nowrap;
+    padding: 4px 6px;
+    font-size: 0.72rem;
+    gap: 3px;
+    border-radius: 6px;
   }
 
   .btn svg {
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
   }
 
   .visualizer-container {

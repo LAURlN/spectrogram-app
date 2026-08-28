@@ -57,6 +57,9 @@
     eqHigh: 0,
     showOscilloscope: true,
     showSpectrumBar: true,
+    showCanvasNotes: true,
+    showTunerHUD: true,
+    showMultiNoteBar: false,
     deviceId: ''
   };
 
@@ -196,6 +199,10 @@
     DOM.tunerNeedle = document.getElementById('tunerNeedle');
     DOM.tunerStatusBadge = document.getElementById('tunerStatusBadge');
     DOM.multiNoteList = document.getElementById('multiNoteList');
+    DOM.multiNoteBarContainer = document.getElementById('multiNoteBar');
+    DOM.showCanvasNotes = document.getElementById('showCanvasNotes');
+    DOM.showTunerHUD = document.getElementById('showTunerHUD');
+    DOM.showMultiNoteBar = document.getElementById('showMultiNoteBar');
     DOM.volumeCurveSelect = document.getElementById('volumeCurveSelect');
 
     DOM.noteSensRange = document.getElementById('noteSensRange');
@@ -402,6 +409,30 @@
     DOM.showSpectrumBar.addEventListener('change', (e) => {
       config.showSpectrumBar = e.target.checked;
     });
+
+    if (DOM.showCanvasNotes) {
+      DOM.showCanvasNotes.addEventListener('change', (e) => {
+        config.showCanvasNotes = e.target.checked;
+      });
+    }
+
+    if (DOM.showTunerHUD) {
+      DOM.showTunerHUD.addEventListener('change', (e) => {
+        config.showTunerHUD = e.target.checked;
+        if (DOM.pitchTunerHud) {
+          DOM.pitchTunerHud.classList.toggle('hidden', !config.showTunerHUD);
+        }
+      });
+    }
+
+    if (DOM.showMultiNoteBar) {
+      DOM.showMultiNoteBar.addEventListener('change', (e) => {
+        config.showMultiNoteBar = e.target.checked;
+        if (DOM.multiNoteBarContainer) {
+          DOM.multiNoteBarContainer.classList.toggle('hidden', !config.showMultiNoteBar);
+        }
+      });
+    }
 
     // Collapsible Panel Handlers (Left Settings & Right Piano)
     if (DOM.toggleSidebarBtn) {
@@ -970,7 +1001,7 @@
     }
 
     // 3. Render Confirmed Sustained Note Callouts directly on the Spectrogram Canvas
-    if (confirmedSustainedNotes && confirmedSustainedNotes.length > 0 && isRunning) {
+    if (config.showCanvasNotes && confirmedSustainedNotes && confirmedSustainedNotes.length > 0 && isRunning) {
       overlayCtx.save();
       const nyquist = sampleRate / 2;
       const maxFreq = Math.min(config.maxFreq, nyquist);
@@ -1597,13 +1628,13 @@
     const nyquist = sampleRate / 2;
     const maxBinIndex = Math.floor((config.maxFreq / nyquist) * numBins);
 
-    // Sensitivity Settings Map (Level 1: Strict ... 3: Balanced ... 5: Sensitive)
+    // Sensitivity Settings Map (Level 1: Strict ... 3: Balanced Default (Old Level 5) ... 5: Max Sensitive)
     const sensMap = {
-      1: { cutoffDb: -48, minPeakVal: -50, prominence: 4.5, requiredHits: 6, minHoldMs: 180 },
-      2: { cutoffDb: -56, minPeakVal: -58, prominence: 3.0, requiredHits: 4, minHoldMs: 100 },
-      3: { cutoffDb: -64, minPeakVal: -66, prominence: 1.8, requiredHits: 2, minHoldMs: 40  },
-      4: { cutoffDb: -72, minPeakVal: -75, prominence: 1.2, requiredHits: 1, minHoldMs: 20  },
-      5: { cutoffDb: -80, minPeakVal: -84, prominence: 0.7, requiredHits: 1, minHoldMs: 10  }
+      1: { cutoffDb: -56, minPeakVal: -60, prominence: 3.0, requiredHits: 4, minHoldMs: 100 },
+      2: { cutoffDb: -68, minPeakVal: -72, prominence: 1.8, requiredHits: 2, minHoldMs: 30  },
+      3: { cutoffDb: -80, minPeakVal: -84, prominence: 0.7, requiredHits: 1, minHoldMs: 10  }, // OLD LEVEL 5 IS NOW LEVEL 3 DEFAULT!
+      4: { cutoffDb: -88, minPeakVal: -90, prominence: 0.4, requiredHits: 1, minHoldMs: 0   },
+      5: { cutoffDb: -96, minPeakVal: -98, prominence: 0.2, requiredHits: 1, minHoldMs: 0   }
     };
     const sens = sensMap[config.noteSensitivity || 3];
 
