@@ -1466,6 +1466,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
   .mic-status-badge {
     padding: 3px 6px;
     font-size: 0.68rem;
+    max-width: 65px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .audio-level-meter {
@@ -1485,6 +1489,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-size: 0.72rem;
     gap: 3px;
     border-radius: 6px;
+    max-width: 75px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .btn svg {
