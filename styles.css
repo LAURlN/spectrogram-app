@@ -1439,61 +1439,138 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* Mobile & Tablet Responsive Styles */
 @media (max-width: 768px) {
+  html, body, .app-container {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
   .app-header {
-    padding: 6px 10px;
+    padding: 6px 12px;
     height: auto;
-    min-height: 54px;
-    flex-wrap: wrap;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .brand h1 {
+    font-size: 1.05rem;
+  }
+
+  .header-center {
     gap: 8px;
   }
 
+  .audio-level-meter {
+    display: none; /* Hide meter bar on mobile header to maximize space */
+  }
+
   .header-actions {
-    width: 100%;
-    justify-content: space-between;
+    display: flex;
+    gap: 6px;
     overflow-x: auto;
-    padding-bottom: 4px;
   }
 
   .btn {
-    padding: 6px 10px;
-    font-size: 0.76rem;
+    padding: 5px 9px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .visualizer-container {
+    grid-template-columns: 38px 1fr !important;
+    grid-template-rows: 1fr 22px !important;
+  }
+
+  .y-tick {
+    font-size: 0.6rem;
+    right: 4px;
   }
 
   .pitch-tuner-hud {
-    width: 92%;
-    min-width: 0;
-    top: 8px;
-    padding: 8px 12px;
+    width: 95%;
+    max-width: 360px;
+    min-width: 0 !important;
+    top: 6px;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .tuner-top-row {
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  .tuner-note-badge {
+    font-size: 1.3rem;
+    min-width: 46px;
+    padding: 4px 6px;
+  }
+
+  .tuner-status-badge {
+    font-size: 0.62rem;
+    padding: 4px 6px;
+  }
+
+  .tuner-ticks {
+    font-size: 0.58rem;
   }
 
   .app-main {
     flex-direction: column;
     position: relative;
+    overflow: hidden;
   }
 
   .control-panel, .piano-panel {
     position: absolute;
     top: 0;
     bottom: 0;
-    z-index: 20;
-    width: 85% !important;
-    max-width: 340px;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.85);
+    z-index: 50;
+    width: 88% !important;
+    max-width: 320px;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
   }
 
   .control-panel {
     left: 0;
+    border-right: 1px solid var(--primary);
   }
 
   .piano-panel {
     right: 0;
+    border-left: 1px solid var(--primary);
+  }
+
+  .piano-keyboard-wrapper {
+    padding: 10px 4px;
   }
 
   .piano-key {
-    min-width: 32px;
+    min-width: 28px;
+    height: 110px;
   }
 
   .piano-key.black {
-    min-width: 24px;
+    min-width: 20px;
+    height: 70px;
+  }
+
+  .app-footer {
+    padding: 4px 10px;
+    font-size: 0.65rem;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .footer-stat {
+    font-size: 0.65rem;
   }
 }

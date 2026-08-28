@@ -104,6 +104,15 @@
     renderLegend();
     loadSavedProfile();
     initPianoKeyboard();
+
+    // Auto-collapse side panels on mobile screens for full-screen visualizer display
+    if (window.innerWidth <= 768) {
+      if (DOM.controlPanel) DOM.controlPanel.classList.add('collapsed');
+      if (DOM.pianoPanel) DOM.pianoPanel.classList.add('collapsed');
+      if (DOM.toggleSidebarBtn) DOM.toggleSidebarBtn.classList.remove('active');
+      if (DOM.togglePianoPanelBtn) DOM.togglePianoPanelBtn.classList.remove('active');
+    }
+
     resizeCanvases();
   }
 
