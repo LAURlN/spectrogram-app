@@ -528,22 +528,12 @@
     // Mobile Background / Tab Switch Lifecycle Management
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
-        // Tab moved to background: disable audio tracks & suspend context to release phone mic hardware
-        if (isRunning && mediaStream) {
-          mediaStream.getAudioTracks().forEach(track => { track.enabled = false; });
-        }
         if (audioCtx && audioCtx.state === 'running') {
           audioCtx.suspend().catch(() => {});
         }
       } else if (document.visibilityState === 'visible') {
-        // Tab returned to foreground: re-enable tracks & resume context
-        if (isRunning) {
-          if (mediaStream) {
-            mediaStream.getAudioTracks().forEach(track => { track.enabled = true; });
-          }
-          if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume().catch(() => {});
-          }
+        if (isRunning && audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
         }
       }
     });
@@ -696,14 +686,12 @@
       try {
         mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (errConstraint) {
-        console.warn('Exact deviceId constraint failed, falling back to basic audio:', errConstraint);
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          }
-        });
+        console.warn('Advanced constraint getUserMedia failed, falling back to standard audio:', errConstraint);
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
       }
 
       sourceNode = audioCtx.createMediaStreamSource(mediaStream);
