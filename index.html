@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <div class="app-container">
@@ -25,38 +25,6 @@
         <div class="mic-status-badge idled" id="micStatus">
           <span class="status-dot"></span>
           <span class="status-text" id="statusText">Idle</span>
-        </div>
-      </div>
-
-      <!-- Game Selection Dropdown / Drawer -->
-      <div class="game-menu-overlay hidden" id="gameMenuOverlay"></div>
-      <div class="game-menu-drawer hidden" id="gameMenuDrawer">
-        <div class="game-menu-header">
-          <div class="menu-title">
-            <span class="menu-icon">🎮</span>
-            <h3>Select Mode / Game</h3>
-          </div>
-          <button class="btn-close-icon" id="closeGameMenuBtn">&times;</button>
-        </div>
-
-        <div class="game-menu-list">
-          <button class="game-menu-card active" id="selectSpectrogramBtn" data-game="spectrogram">
-            <div class="game-card-icon">📊</div>
-            <div class="game-card-info">
-              <span class="game-card-title">2D Spectrogram</span>
-              <span class="game-card-sub">Real-time spectrum & pitch tuner</span>
-            </div>
-            <span class="game-card-badge">Active</span>
-          </button>
-
-          <button class="game-menu-card" id="selectGame2Btn" data-game="game2">
-            <div class="game-card-icon">🎯</div>
-            <div class="game-card-info">
-              <span class="game-card-title">Game 2 (Empty Mode)</span>
-              <span class="game-card-sub">Placeholder for next game</span>
-            </div>
-            <span class="game-card-badge placeholder">Select</span>
-          </button>
         </div>
       </div>
 
@@ -588,6 +556,38 @@
         <button class="btn btn-secondary" id="cancelCalibBtn">Cancel</button>
         <button class="btn btn-primary" id="startCalibStepBtn">Start Phase 1 (Quiet 2s)</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Top-Level Game Selection Dropdown / Drawer -->
+  <div class="game-menu-overlay hidden" id="gameMenuOverlay"></div>
+  <div class="game-menu-drawer hidden" id="gameMenuDrawer">
+    <div class="game-menu-header">
+      <div class="menu-title">
+        <span class="menu-icon">🎮</span>
+        <h3>Select Mode / Game</h3>
+      </div>
+      <button class="btn-close-icon" id="closeGameMenuBtn">&times;</button>
+    </div>
+
+    <div class="game-menu-list">
+      <button class="game-menu-card active" id="selectSpectrogramBtn" data-game="spectrogram">
+        <div class="game-card-icon">📊</div>
+        <div class="game-card-info">
+          <span class="game-card-title">2D Spectrogram</span>
+          <span class="game-card-sub">Real-time spectrum & pitch tuner</span>
+        </div>
+        <span class="game-card-badge">Active</span>
+      </button>
+
+      <button class="game-menu-card" id="selectGame2Btn" data-game="game2">
+        <div class="game-card-icon">🎯</div>
+        <div class="game-card-info">
+          <span class="game-card-title">Game 2 (Empty Mode)</span>
+          <span class="game-card-sub">Placeholder for next game</span>
+        </div>
+        <span class="game-card-badge placeholder">Select</span>
+      </button>
     </div>
   </div>
 
