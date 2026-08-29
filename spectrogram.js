@@ -106,6 +106,7 @@
     renderXAxis();
     renderLegend();
     loadSavedProfile();
+    loadSavedLatency();
     initPianoKeyboard();
 
     // Auto-collapse side panels on mobile screens for full-screen visualizer display
@@ -254,6 +255,35 @@
     DOM.g2ScoreBarFill = document.getElementById('g2ScoreBarFill');
     DOM.targetSpectrogramCanvas = document.getElementById('targetSpectrogramCanvas');
     DOM.attemptSpectrogramCanvas = document.getElementById('attemptSpectrogramCanvas');
+
+    // Latency Calibration Modal Elements
+    DOM.g2CalibrateLatencyBtn = document.getElementById('g2CalibrateLatencyBtn');
+    DOM.g2CalibrateLatencyBtnText = document.getElementById('g2CalibrateLatencyBtnText');
+    DOM.latencyCalibModal = document.getElementById('latencyCalibModal');
+    DOM.latencyCalibCloseBtn = document.getElementById('latencyCalibCloseBtn');
+    DOM.latencyCalibCancelBtn = document.getElementById('latencyCalibCancelBtn');
+    DOM.latencyCalibStartBtn = document.getElementById('latencyCalibStartBtn');
+    DOM.latencyCalibStepTag = document.getElementById('latencyCalibStepTag');
+    DOM.latencyCalibTitle = document.getElementById('latencyCalibTitle');
+    DOM.latencyCalibDesc = document.getElementById('latencyCalibDesc');
+    DOM.latencyCalibInstructions = document.getElementById('latencyCalibInstructions');
+    DOM.latencyCalibProgress = document.getElementById('latencyCalibProgress');
+    DOM.latencyCalibResult = document.getElementById('latencyCalibResult');
+    DOM.latencyRoundCurrent = document.getElementById('latencyRoundCurrent');
+    DOM.beepPulseRing = document.getElementById('beepPulseRing');
+    DOM.latencyBeepStatusText = document.getElementById('latencyBeepStatusText');
+    DOM.latencyRound1Val = document.getElementById('latencyRound1Val');
+    DOM.latencyRound2Val = document.getElementById('latencyRound2Val');
+    DOM.latencyRound3Val = document.getElementById('latencyRound3Val');
+    DOM.latencyRound4Val = document.getElementById('latencyRound4Val');
+    DOM.latencyRound5Val = document.getElementById('latencyRound5Val');
+    DOM.latencyResultMs = document.getElementById('latencyResultMs');
+    DOM.latencyBadgeCard = document.getElementById('latencyBadgeCard');
+    DOM.latencyBadgeValue = document.getElementById('latencyBadgeValue');
+
+    // Mic Troubleshooting Reset Buttons
+    DOM.fixMicBtn = document.getElementById('fixMicBtn');
+    DOM.g2FixMicBtn = document.getElementById('g2FixMicBtn');
   }
 
   function setupCanvases() {
@@ -604,6 +634,26 @@
     if (DOM.g2ResetBtn) {
       DOM.g2ResetBtn.addEventListener('click', g2Reset);
     }
+    if (DOM.g2CalibrateLatencyBtn) {
+      DOM.g2CalibrateLatencyBtn.addEventListener('click', openLatencyCalibModal);
+    }
+    if (DOM.latencyCalibCloseBtn) {
+      DOM.latencyCalibCloseBtn.addEventListener('click', closeLatencyCalibModal);
+    }
+    if (DOM.latencyCalibCancelBtn) {
+      DOM.latencyCalibCancelBtn.addEventListener('click', closeLatencyCalibModal);
+    }
+    if (DOM.latencyCalibStartBtn) {
+      DOM.latencyCalibStartBtn.addEventListener('click', startLatencyCalibration);
+    }
+
+    // Manual 'Mic doesn't work? Reset' button listeners
+    if (DOM.fixMicBtn) {
+      DOM.fixMicBtn.addEventListener('click', () => forceResetAudioPipeline(DOM.fixMicBtn));
+    }
+    if (DOM.g2FixMicBtn) {
+      DOM.g2FixMicBtn.addEventListener('click', () => forceResetAudioPipeline(DOM.g2FixMicBtn));
+    }
   }
 
   let currentAppMode = 'spectrogram'; // 'spectrogram' | 'game2'
@@ -779,8 +829,30 @@
     }
 
     if (sourceNode) {
-      sourceNode.disconnect();
+      try { sourceNode.disconnect(); } catch (e) {}
       sourceNode = null;
+    }
+    if (lowEqNode) {
+      try { lowEqNode.disconnect(); } catch (e) {}
+      lowEqNode = null;
+    }
+    if (midEqNode) {
+      try { midEqNode.disconnect(); } catch (e) {}
+      midEqNode = null;
+    }
+    if (highEqNode) {
+      try { highEqNode.disconnect(); } catch (e) {}
+      highEqNode = null;
+    }
+    if (analyserNode) {
+      try { analyserNode.disconnect(); } catch (e) {}
+      analyserNode = null;
+    }
+
+    // Fully close the AudioContext to prevent zombie state on next start
+    if (audioCtx) {
+      audioCtx.close().catch(() => {});
+      audioCtx = null;
     }
 
     DOM.freezeBtn.disabled = true;
@@ -795,6 +867,56 @@
   async function restartMicrophone() {
     stopMicrophone();
     await startMicrophone();
+  }
+
+  // --- Manual Force-Reset Audio Pipeline ("Mic doesn't work?" button) ---
+  let isResettingAudio = false;
+  async function forceResetAudioPipeline(buttonElement) {
+    if (isResettingAudio) return;
+    isResettingAudio = true;
+
+    let originalHtml = '';
+    if (buttonElement) {
+      originalHtml = buttonElement.innerHTML;
+      buttonElement.disabled = true;
+      buttonElement.innerHTML = '<span>🔄 Resetting Audio...</span>';
+    }
+
+    console.log('[Audio Reset] Rebuilding audio context & microphone streams...');
+    stopMicrophone();
+
+    // Give browser hardware a brief moment to tear down cleanly
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    try {
+      await startMicrophone();
+      if (buttonElement) {
+        buttonElement.innerHTML = '<span>✅ Audio Rebuilt!</span>';
+        setTimeout(() => {
+          if (buttonElement) {
+            buttonElement.innerHTML = originalHtml;
+            buttonElement.disabled = false;
+          }
+          isResettingAudio = false;
+        }, 1800);
+      } else {
+        isResettingAudio = false;
+      }
+    } catch (err) {
+      console.error('[Audio Reset] Error reinitializing microphone:', err);
+      if (buttonElement) {
+        buttonElement.innerHTML = '<span>⚠️ Reset Failed</span>';
+        setTimeout(() => {
+          if (buttonElement) {
+            buttonElement.innerHTML = originalHtml;
+            buttonElement.disabled = false;
+          }
+          isResettingAudio = false;
+        }, 2200);
+      } else {
+        isResettingAudio = false;
+      }
+    }
   }
 
   function updateStatusBadge() {
@@ -855,6 +977,11 @@
       // Process Calibration Frame if active
       if (calib.active) {
         processCalibrationFrame();
+      }
+
+      // Process Latency Calibration Frame if active
+      if (latencyCalib.isCalibrating) {
+        processLatencyCalibFrame();
       }
 
       // Process Spectrogram Waterfall frame
@@ -1757,6 +1884,354 @@
     } catch (e) {}
   }
 
+  // --- Audio Latency Calibration Engine (Beep-and-Detect) ---
+  const LATENCY_BEEP_FREQ = 1000; // Hz - easy to detect in FFT
+  const LATENCY_BEEP_DURATION = 0.1; // 100ms sine burst
+  const LATENCY_TOTAL_ROUNDS = 5;
+  const LATENCY_GAP_MS = 900; // gap between beeps
+  const LATENCY_DETECT_THRESHOLD_DB = -55; // energy threshold at 1000 Hz bin to consider "detected"
+  const LATENCY_TIMEOUT_MS = 1500; // max wait per round before considering it failed
+
+  const latencyCalib = {
+    isCalibrating: false,
+    currentRound: 0,
+    beepStartTime: 0,
+    measurements: [],
+    calibratedMs: null, // final calibrated value
+    waitingForDetection: false,
+    beepScheduled: false,
+    roundTimerId: null,
+    sequenceTimerId: null,
+    baselineEnergy1k: -100, // ambient energy at 1000 Hz before beep
+  };
+
+  function openLatencyCalibModal() {
+    if (!isRunning) {
+      startMicrophone().then(() => {
+        if (isRunning) showLatencyCalibModal();
+      });
+    } else {
+      showLatencyCalibModal();
+    }
+  }
+
+  function showLatencyCalibModal() {
+    if (!DOM.latencyCalibModal) return;
+    DOM.latencyCalibModal.classList.remove('hidden');
+
+    // Reset to instructions view
+    if (DOM.latencyCalibInstructions) DOM.latencyCalibInstructions.style.display = '';
+    if (DOM.latencyCalibProgress) DOM.latencyCalibProgress.style.display = 'none';
+    if (DOM.latencyCalibResult) DOM.latencyCalibResult.style.display = 'none';
+    if (DOM.latencyCalibStepTag) DOM.latencyCalibStepTag.textContent = 'Preparation';
+    if (DOM.latencyCalibStartBtn) {
+      DOM.latencyCalibStartBtn.textContent = 'Start Calibration';
+      DOM.latencyCalibStartBtn.disabled = false;
+      DOM.latencyCalibStartBtn.style.display = '';
+    }
+
+    // Reset round value display
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById(`latencyRound${i}Val`);
+      if (el) el.textContent = '\u2014';
+      const row = el ? el.closest('.latency-round-row') : null;
+      if (row) row.className = 'latency-round-row';
+    }
+
+    latencyCalib.isCalibrating = false;
+    latencyCalib.currentRound = 0;
+    latencyCalib.measurements = [];
+    latencyCalib.waitingForDetection = false;
+  }
+
+  function closeLatencyCalibModal() {
+    if (DOM.latencyCalibModal) DOM.latencyCalibModal.classList.add('hidden');
+
+    // Abort any in-progress calibration
+    latencyCalib.isCalibrating = false;
+    latencyCalib.waitingForDetection = false;
+    if (latencyCalib.roundTimerId) {
+      clearTimeout(latencyCalib.roundTimerId);
+      latencyCalib.roundTimerId = null;
+    }
+    if (latencyCalib.sequenceTimerId) {
+      clearTimeout(latencyCalib.sequenceTimerId);
+      latencyCalib.sequenceTimerId = null;
+    }
+  }
+
+  function startLatencyCalibration() {
+    if (!isRunning || !analyserNode) {
+      alert('Microphone must be active to calibrate latency.');
+      return;
+    }
+
+    // Ensure pianoAudioCtx exists for speaker output
+    if (!pianoAudioCtx) {
+      pianoAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (pianoAudioCtx.state === 'suspended') {
+      pianoAudioCtx.resume();
+    }
+
+    // Switch to progress view
+    if (DOM.latencyCalibInstructions) DOM.latencyCalibInstructions.style.display = 'none';
+    if (DOM.latencyCalibProgress) DOM.latencyCalibProgress.style.display = '';
+    if (DOM.latencyCalibResult) DOM.latencyCalibResult.style.display = 'none';
+    if (DOM.latencyCalibStartBtn) DOM.latencyCalibStartBtn.style.display = 'none';
+    if (DOM.latencyCalibStepTag) DOM.latencyCalibStepTag.textContent = 'Calibrating...';
+
+    latencyCalib.isCalibrating = true;
+    latencyCalib.currentRound = 0;
+    latencyCalib.measurements = [];
+    latencyCalib.waitingForDetection = false;
+
+    // Sample baseline energy at 1000 Hz (ambient level before any beep)
+    sampleBaselineEnergy();
+
+    // Start first round after a short delay
+    latencyCalib.sequenceTimerId = setTimeout(() => {
+      runLatencyCalibRound();
+    }, 500);
+  }
+
+  function sampleBaselineEnergy() {
+    if (!frequencyData || !analyserNode) return;
+    analyserNode.getFloatFrequencyData(frequencyData);
+    const bin1k = Math.round((LATENCY_BEEP_FREQ / (sampleRate / 2)) * frequencyData.length);
+    // Sample a few bins around 1000 Hz for baseline
+    let maxBaseline = -100;
+    for (let b = Math.max(0, bin1k - 3); b <= Math.min(frequencyData.length - 1, bin1k + 3); b++) {
+      if (frequencyData[b] > maxBaseline) maxBaseline = frequencyData[b];
+    }
+    latencyCalib.baselineEnergy1k = maxBaseline;
+  }
+
+  function runLatencyCalibRound() {
+    if (!latencyCalib.isCalibrating) return;
+
+    latencyCalib.currentRound++;
+    const round = latencyCalib.currentRound;
+
+    if (round > LATENCY_TOTAL_ROUNDS) {
+      finishLatencyCalibration();
+      return;
+    }
+
+    // Update UI for this round
+    if (DOM.latencyRoundCurrent) DOM.latencyRoundCurrent.textContent = round;
+
+    // Mark current row as active
+    for (let i = 1; i <= LATENCY_TOTAL_ROUNDS; i++) {
+      const el = document.getElementById(`latencyRound${i}Val`);
+      const row = el ? el.closest('.latency-round-row') : null;
+      if (row) {
+        if (i === round) row.className = 'latency-round-row active';
+        else if (i < round) row.className = 'latency-round-row done';
+        else row.className = 'latency-round-row';
+      }
+    }
+
+    // Show "playing" state
+    if (DOM.beepPulseRing) DOM.beepPulseRing.className = 'beep-pulse-ring playing';
+    if (DOM.latencyBeepStatusText) DOM.latencyBeepStatusText.textContent = 'Playing beep...';
+
+    // Play the beep and record the exact timestamp
+    playLatencyBeep();
+    latencyCalib.beepStartTime = performance.now();
+    latencyCalib.waitingForDetection = true;
+
+    // After a short delay, switch to "listening" state
+    setTimeout(() => {
+      if (!latencyCalib.isCalibrating) return;
+      if (DOM.beepPulseRing) DOM.beepPulseRing.className = 'beep-pulse-ring listening';
+      if (DOM.latencyBeepStatusText) DOM.latencyBeepStatusText.textContent = 'Listening for beep on mic...';
+    }, 120);
+
+    // Timeout if detection doesn't happen within LATENCY_TIMEOUT_MS
+    latencyCalib.roundTimerId = setTimeout(() => {
+      if (latencyCalib.waitingForDetection && latencyCalib.isCalibrating) {
+        // Failed to detect this round
+        latencyCalib.waitingForDetection = false;
+        const el = document.getElementById(`latencyRound${round}Val`);
+        if (el) el.textContent = 'MISSED';
+        const row = el ? el.closest('.latency-round-row') : null;
+        if (row) row.className = 'latency-round-row done';
+
+        if (DOM.beepPulseRing) DOM.beepPulseRing.className = 'beep-pulse-ring';
+        if (DOM.latencyBeepStatusText) DOM.latencyBeepStatusText.textContent = 'Beep not detected — retrying...';
+
+        // Move to next round
+        latencyCalib.sequenceTimerId = setTimeout(() => {
+          runLatencyCalibRound();
+        }, 400);
+      }
+    }, LATENCY_TIMEOUT_MS);
+  }
+
+  function playLatencyBeep() {
+    if (!pianoAudioCtx) return;
+    if (pianoAudioCtx.state === 'suspended') {
+      pianoAudioCtx.resume();
+    }
+
+    const now = pianoAudioCtx.currentTime;
+    const osc = pianoAudioCtx.createOscillator();
+    const gain = pianoAudioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(LATENCY_BEEP_FREQ, now);
+
+    // Sharp envelope for clean detection
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.5, now + 0.005); // 5ms attack
+    gain.gain.setValueAtTime(0.5, now + LATENCY_BEEP_DURATION - 0.005);
+    gain.gain.linearRampToValueAtTime(0.0001, now + LATENCY_BEEP_DURATION);
+
+    osc.connect(gain);
+    gain.connect(pianoAudioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + LATENCY_BEEP_DURATION + 0.01);
+
+    // Cleanup after beep finishes
+    setTimeout(() => {
+      try {
+        osc.disconnect();
+        gain.disconnect();
+      } catch (e) {}
+    }, (LATENCY_BEEP_DURATION + 0.05) * 1000);
+  }
+
+  function processLatencyCalibFrame() {
+    if (!latencyCalib.isCalibrating || !latencyCalib.waitingForDetection) return;
+    if (!frequencyData || !analyserNode) return;
+
+    const nyquist = sampleRate / 2;
+    const numBins = frequencyData.length;
+    const targetBin = Math.round((LATENCY_BEEP_FREQ / nyquist) * numBins);
+
+    // Check energy in a narrow band around 1000 Hz (±3 bins)
+    let peakDb = -100;
+    for (let b = Math.max(0, targetBin - 3); b <= Math.min(numBins - 1, targetBin + 3); b++) {
+      if (frequencyData[b] > peakDb) peakDb = frequencyData[b];
+    }
+
+    // Dynamic threshold: must be significantly above both the absolute threshold AND the baseline
+    const dynamicThreshold = Math.max(LATENCY_DETECT_THRESHOLD_DB, latencyCalib.baselineEnergy1k + 15);
+
+    if (peakDb > dynamicThreshold) {
+      // DETECTED! Record the round-trip latency
+      const latencyMs = Math.round(performance.now() - latencyCalib.beepStartTime);
+      latencyCalib.waitingForDetection = false;
+
+      if (latencyCalib.roundTimerId) {
+        clearTimeout(latencyCalib.roundTimerId);
+        latencyCalib.roundTimerId = null;
+      }
+
+      const round = latencyCalib.currentRound;
+      latencyCalib.measurements.push(latencyMs);
+
+      // Update round UI
+      const el = document.getElementById(`latencyRound${round}Val`);
+      if (el) el.textContent = `${latencyMs} ms`;
+      const row = el ? el.closest('.latency-round-row') : null;
+      if (row) row.className = 'latency-round-row done';
+
+      if (DOM.beepPulseRing) DOM.beepPulseRing.className = 'beep-pulse-ring detected';
+      if (DOM.latencyBeepStatusText) DOM.latencyBeepStatusText.textContent = `Detected! ${latencyMs} ms`;
+
+      // Schedule next round
+      latencyCalib.sequenceTimerId = setTimeout(() => {
+        runLatencyCalibRound();
+      }, LATENCY_GAP_MS);
+    }
+  }
+
+  function finishLatencyCalibration() {
+    latencyCalib.isCalibrating = false;
+    latencyCalib.waitingForDetection = false;
+
+    if (latencyCalib.measurements.length === 0) {
+      // No successful detections at all
+      if (DOM.latencyCalibProgress) DOM.latencyCalibProgress.style.display = 'none';
+      if (DOM.latencyCalibResult) DOM.latencyCalibResult.style.display = '';
+      if (DOM.latencyResultMs) DOM.latencyResultMs.textContent = '?';
+      if (DOM.latencyCalibStepTag) DOM.latencyCalibStepTag.textContent = 'Failed';
+
+      const noteEl = DOM.latencyCalibResult ? DOM.latencyCalibResult.querySelector('.latency-result-note') : null;
+      if (noteEl) noteEl.textContent = 'No beeps were detected. Make sure the speaker is close to the mic and try again.';
+
+      const iconEl = DOM.latencyCalibResult ? DOM.latencyCalibResult.querySelector('.latency-result-icon') : null;
+      if (iconEl) iconEl.textContent = '\u274c';
+
+      if (DOM.latencyCalibStartBtn) {
+        DOM.latencyCalibStartBtn.style.display = '';
+        DOM.latencyCalibStartBtn.textContent = 'Retry Calibration';
+        DOM.latencyCalibStartBtn.disabled = false;
+      }
+      return;
+    }
+
+    // Calculate median of successful measurements
+    const sorted = [...latencyCalib.measurements].sort((a, b) => a - b);
+    const medianMs = sorted[Math.floor(sorted.length / 2)];
+
+    latencyCalib.calibratedMs = medianMs;
+
+    // Persist to localStorage
+    localStorage.setItem('audio_latency_ms', JSON.stringify(medianMs));
+
+    // Show result view
+    if (DOM.latencyCalibProgress) DOM.latencyCalibProgress.style.display = 'none';
+    if (DOM.latencyCalibResult) DOM.latencyCalibResult.style.display = '';
+    if (DOM.latencyResultMs) DOM.latencyResultMs.textContent = medianMs;
+    if (DOM.latencyCalibStepTag) DOM.latencyCalibStepTag.textContent = 'Complete';
+
+    const noteEl = DOM.latencyCalibResult ? DOM.latencyCalibResult.querySelector('.latency-result-note') : null;
+    if (noteEl) noteEl.textContent = `This latency offset will be applied to all subsequent attempts for accurate scoring. (${latencyCalib.measurements.length} of ${LATENCY_TOTAL_ROUNDS} rounds detected)`;
+
+    if (DOM.latencyCalibStartBtn) {
+      DOM.latencyCalibStartBtn.style.display = '';
+      DOM.latencyCalibStartBtn.textContent = 'Done';
+      DOM.latencyCalibStartBtn.disabled = false;
+      DOM.latencyCalibStartBtn.onclick = closeLatencyCalibModal;
+    }
+
+    // Update latency badge in Game 2
+    updateLatencyBadgeUI();
+  }
+
+  function updateLatencyBadgeUI() {
+    if (DOM.latencyBadgeValue) {
+      if (latencyCalib.calibratedMs !== null) {
+        DOM.latencyBadgeValue.textContent = `${latencyCalib.calibratedMs} ms`;
+        DOM.latencyBadgeValue.classList.add('calibrated');
+      } else {
+        DOM.latencyBadgeValue.textContent = 'Not Calibrated';
+        DOM.latencyBadgeValue.classList.remove('calibrated');
+      }
+    }
+    if (DOM.g2CalibrateLatencyBtnText) {
+      if (latencyCalib.calibratedMs !== null) {
+        DOM.g2CalibrateLatencyBtnText.textContent = `\u23f1\ufe0f Latency: ${latencyCalib.calibratedMs}ms`;
+      } else {
+        DOM.g2CalibrateLatencyBtnText.textContent = '\u23f1\ufe0f Calibrate Latency';
+      }
+    }
+  }
+
+  function loadSavedLatency() {
+    try {
+      const saved = localStorage.getItem('audio_latency_ms');
+      if (saved !== null) {
+        latencyCalib.calibratedMs = JSON.parse(saved);
+        updateLatencyBadgeUI();
+      }
+    } catch (e) {}
+  }
+
   // --- Polyphonic Sustained Note Detection Engine (Zero-Lag 60 FPS) ---
   const sustainedNoteTracker = new Map(); // noteName -> { noteName, freqHz, db, octave, firstSeen, lastSeen }
   let confirmedSustainedNotes = [];
@@ -2361,8 +2836,29 @@
       g2State.refMediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) g2State.recordedChunks.push(e.data);
       };
-      g2State.refMediaRecorder.onstop = () => {
+      g2State.refMediaRecorder.onstop = async () => {
         const blob = new Blob(g2State.recordedChunks, { type: 'audio/webm' });
+        
+        // Decode to AudioBuffer for sub-millisecond, glitch-free Web Audio playback
+        if (!pianoAudioCtx) {
+          pianoAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (pianoAudioCtx.state === 'suspended') {
+          pianoAudioCtx.resume().catch(() => {});
+        }
+
+        try {
+          const arrayBuffer = await blob.arrayBuffer();
+          const decoded = await pianoAudioCtx.decodeAudioData(arrayBuffer);
+          g2State.refAudioBuffer = decoded;
+          if (decoded && decoded.duration > 0) {
+            g2State.refDurationSec = decoded.duration;
+            if (DOM.targetDurationBadge) DOM.targetDurationBadge.textContent = `${g2State.refDurationSec.toFixed(1)}s`;
+          }
+        } catch (decodeErr) {
+          console.warn('[Game2] decodeAudioData fallback to audio element:', decodeErr);
+        }
+
         if (g2State.refAudioUrl) URL.revokeObjectURL(g2State.refAudioUrl);
         g2State.refAudioUrl = URL.createObjectURL(blob);
         g2State.refAudioElement = new Audio(g2State.refAudioUrl);
@@ -2394,27 +2890,84 @@
     redrawTargetSpectrogram();
   }
 
-  function g2PlayRef() {
-    if (!g2State.refAudioElement) return;
+  let currentRefSourceNode = null;
 
+  function g2StopPlayingRef() {
+    g2State.isPlayingRef = false;
+    if (g2State.playAnimFrameId) {
+      cancelAnimationFrame(g2State.playAnimFrameId);
+      g2State.playAnimFrameId = null;
+    }
+    if (currentRefSourceNode) {
+      try { currentRefSourceNode.stop(); currentRefSourceNode.disconnect(); } catch (e) {}
+      currentRefSourceNode = null;
+    }
+    if (g2State.refAudioElement) {
+      try { g2State.refAudioElement.pause(); } catch (e) {}
+    }
+  }
+
+  function g2PlayRef() {
+    if (!g2State.refAudioBuffer && !g2State.refAudioElement) return;
+
+    g2StopPlayingRef();
     g2State.isPlayingRef = true;
-    g2State.refAudioElement.currentTime = 0;
-    g2State.refAudioElement.play();
 
     if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Replaying Target...';
 
-    const animatePlayback = () => {
-      if (g2State.refAudioElement && !g2State.refAudioElement.paused) {
-        const progress = g2State.refAudioElement.currentTime / g2State.refAudioElement.duration;
+    if (!pianoAudioCtx) {
+      pianoAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (pianoAudioCtx.state === 'suspended') {
+      pianoAudioCtx.resume().catch(() => {});
+    }
+
+    const durationMs = Math.max(100, (g2State.refDurationSec || 1) * 1000);
+    const playStartTime = performance.now();
+
+    if (g2State.refAudioBuffer) {
+      const source = pianoAudioCtx.createBufferSource();
+      source.buffer = g2State.refAudioBuffer;
+      source.connect(pianoAudioCtx.destination);
+      currentRefSourceNode = source;
+      source.start();
+
+      const animatePlayback = () => {
+        if (!g2State.isPlayingRef) return;
+        const elapsed = performance.now() - playStartTime;
+        const progress = Math.min(1.0, elapsed / durationMs);
         redrawTargetSpectrogram(progress);
-        g2State.playAnimFrameId = requestAnimationFrame(animatePlayback);
-      } else {
-        g2State.isPlayingRef = false;
-        if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Target Playback Ended';
-        redrawTargetSpectrogram();
-      }
-    };
-    animatePlayback();
+
+        if (progress < 1.0) {
+          g2State.playAnimFrameId = requestAnimationFrame(animatePlayback);
+        } else {
+          g2State.isPlayingRef = false;
+          currentRefSourceNode = null;
+          if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Target Playback Ended';
+          redrawTargetSpectrogram();
+        }
+      };
+      g2State.playAnimFrameId = requestAnimationFrame(animatePlayback);
+    } else if (g2State.refAudioElement) {
+      g2State.refAudioElement.currentTime = 0;
+      g2State.refAudioElement.play();
+
+      const animatePlayback = () => {
+        if (!g2State.isPlayingRef) return;
+        const elapsed = performance.now() - playStartTime;
+        const progress = Math.min(1.0, elapsed / durationMs);
+        redrawTargetSpectrogram(progress);
+
+        if (progress < 1.0 && !g2State.refAudioElement.paused) {
+          g2State.playAnimFrameId = requestAnimationFrame(animatePlayback);
+        } else {
+          g2State.isPlayingRef = false;
+          if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Target Playback Ended';
+          redrawTargetSpectrogram();
+        }
+      };
+      g2State.playAnimFrameId = requestAnimationFrame(animatePlayback);
+    }
   }
 
   async function g2ToggleMatch() {
@@ -2429,6 +2982,8 @@
     if (!isRunning) {
       await startMicrophone();
     }
+    g2StopPlayingRef();
+
     g2State.isMatching = true;
     g2State.attemptSpectra = [];
     g2State.matchScores = [];
@@ -2449,8 +3004,21 @@
       attemptSpectroCtx.fillRect(0, 0, DOM.attemptSpectrogramCanvas.width, DOM.attemptSpectrogramCanvas.height);
     }
 
-    // Automatically trigger audio playback of recorded target so user can sing along!
-    if (g2State.refAudioElement) {
+    // Play target reference audio through Web Audio buffer for instant, zero-delay sync
+    if (!pianoAudioCtx) {
+      pianoAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (pianoAudioCtx.state === 'suspended') {
+      pianoAudioCtx.resume().catch(() => {});
+    }
+
+    if (g2State.refAudioBuffer) {
+      const source = pianoAudioCtx.createBufferSource();
+      source.buffer = g2State.refAudioBuffer;
+      source.connect(pianoAudioCtx.destination);
+      currentRefSourceNode = source;
+      source.start();
+    } else if (g2State.refAudioElement) {
       g2State.refAudioElement.currentTime = 0;
       g2State.refAudioElement.play();
     }
@@ -2458,32 +3026,37 @@
 
   function g2StopMatch() {
     g2State.isMatching = false;
-    if (g2State.refAudioElement) {
-      g2State.refAudioElement.pause();
-    }
+    g2State.attemptDurationSec = (performance.now() - g2State.matchStartTime) / 1000;
+
+    g2StopPlayingRef();
+
     if (DOM.g2StartMatchBtnText) DOM.g2StartMatchBtnText.textContent = '🎤 Start Attempt';
     if (DOM.g2StartMatchBtn) DOM.g2StartMatchBtn.classList.replace('btn-secondary', 'btn-accent');
     if (DOM.game2StatusText) DOM.game2StatusText.textContent = 'Attempt Completed';
 
-    // Auto-detect and align microphone/device output latency!
-    autoDetectAndAlignLatency();
+    // Align attempt using the stored calibrated latency
+    alignAttemptWithCalibration();
 
     redrawTargetSpectrogram();
     redrawAttemptSpectrogram();
   }
 
   function g2Reset() {
+    g2StopPlayingRef();
     g2State.isRecordingRef = false;
     g2State.isPlayingRef = false;
     g2State.isMatching = false;
     g2State.refSpectra = [];
     g2State.attemptSpectra = [];
+    g2State.alignedAttemptSpectra = null;
     g2State.matchScores = [];
+    g2State.refAudioBuffer = null;
 
-    if (g2State.refAudioElement) {
-      g2State.refAudioElement.pause();
-      g2State.refAudioElement = null;
+    if (g2State.refAudioUrl) {
+      URL.revokeObjectURL(g2State.refAudioUrl);
+      g2State.refAudioUrl = null;
     }
+    g2State.refAudioElement = null;
 
     if (DOM.g2RecordRefBtnText) DOM.g2RecordRefBtnText.textContent = '🔴 Record Target';
     if (DOM.g2PlayRefBtn) DOM.g2PlayRefBtn.disabled = true;
@@ -2932,7 +3505,7 @@
     return Math.max(0.0, Math.min(1.0, scaled));
   }
 
-  function autoDetectAndAlignLatency() {
+  function alignAttemptWithCalibration() {
     const refSpectra = g2State.refSpectra;
     const attSpectra = g2State.attemptSpectra;
 
@@ -2940,55 +3513,37 @@
 
     const nRef = refSpectra.length;
     const nAtt = attSpectra.length;
+    const refDurationSec = Math.max(0.01, g2State.refDurationSec || 1);
+    const attemptDurationSec = Math.max(0.01, g2State.attemptDurationSec || refDurationSec);
+    const latencySec = (latencyCalib.calibratedMs || 0) / 1000;
 
-    // Search range: -15 frames to +70 frames (up to ~1000ms mobile/bluetooth latency)
-    const minShift = -15;
-    const maxShift = Math.min(70, Math.floor(nAtt * 0.45));
-
-    let bestShift = 0;
-    let maxTotalScore = -1;
-
-    for (let shift = minShift; shift <= maxShift; shift++) {
-      let sumScore = 0;
-      let count = 0;
-
-      for (let t = 0; t < nRef; t++) {
-        const attProgress = (t / nRef) + (shift / nRef);
-        const attIdx = Math.floor(attProgress * nAtt);
-
-        if (attIdx >= 0 && attIdx < nAtt) {
-          const matchScore = computeAdvancedMusicalMatch(attSpectra[attIdx], refSpectra[t]);
-          if (matchScore !== null) {
-            sumScore += matchScore;
-            count++;
-          }
-        }
-      }
-
-      if (count > 0) {
-        const avgScore = sumScore / count;
-        if (avgScore > maxTotalScore) {
-          maxTotalScore = avgScore;
-          bestShift = shift;
-        }
-      }
-    }
-
-    const msPerFrame = (g2State.refDurationSec * 1000) / nRef;
-    const detectedLatencyMs = Math.round(bestShift * msPerFrame);
-    g2State.detectedLatencyMs = detectedLatencyMs;
-    g2State.bestFrameShift = bestShift;
-
-    // Build Time-Aligned Attempt Array mapped 1-to-1 with Target time axis
+    // Time-accurate alignment without speed-crunching:
+    // Frame t of target is at time: targetTimeSec = (t / nRef) * refDurationSec
+    // User response at attempt time: attemptTimeSec = targetTimeSec + latencySec
+    // Frame index in attempt recording: attIdx = (attemptTimeSec / attemptDurationSec) * nAtt
     const alignedAttempt = new Array(nRef);
+    let sumScore = 0;
+    let count = 0;
+
     for (let t = 0; t < nRef; t++) {
-      const attProgress = (t / nRef) + (bestShift / nRef);
+      const targetTimeSec = (t / nRef) * refDurationSec;
+      const attemptTimeSec = targetTimeSec + latencySec;
+      const attProgress = attemptTimeSec / attemptDurationSec;
       const attIdx = Math.max(0, Math.min(nAtt - 1, Math.floor(attProgress * nAtt)));
       alignedAttempt[t] = attSpectra[attIdx];
-    }
-    g2State.alignedAttemptSpectra = alignedAttempt;
 
-    const scaledScore = scaleToFullRangeScore(maxTotalScore);
+      const matchScore = computeAdvancedMusicalMatch(attSpectra[attIdx], refSpectra[t]);
+      if (matchScore !== null) {
+        sumScore += matchScore;
+        count++;
+      }
+    }
+
+    g2State.alignedAttemptSpectra = alignedAttempt;
+    g2State.detectedLatencyMs = latencyCalib.calibratedMs || 0;
+
+    const avgScore = count > 0 ? (sumScore / count) : 0;
+    const scaledScore = scaleToFullRangeScore(avgScore);
     const scorePercent = Math.max(0, Math.min(100, Math.round(scaledScore * 100)));
     g2State.finalCompensatedScore = scorePercent;
 
@@ -3012,11 +3567,14 @@
     }
 
     if (DOM.attemptStatusBadge) {
-      const latStr = detectedLatencyMs >= 0 ? `+${detectedLatencyMs}ms` : `${detectedLatencyMs}ms`;
-      DOM.attemptStatusBadge.textContent = `LATENCY ALIGNED (${latStr})`;
+      if (latencyCalib.calibratedMs !== null) {
+        DOM.attemptStatusBadge.textContent = `CALIBRATED (${latencyCalib.calibratedMs}ms)`;
+      } else {
+        DOM.attemptStatusBadge.textContent = 'UNCALIBRATED (0ms)';
+      }
     }
 
-    return detectedLatencyMs;
+    return g2State.detectedLatencyMs;
   }
 
   function drawFrameToCanvasAtX(canvas, ctx, frequencyData, xPos, colWidth) {
@@ -3124,7 +3682,9 @@
 
       // Calculate Real-time Pitch & Rhythm Match against reference clip frame & Update Live HUD Note Badges!
       if (g2State.refSpectra.length > 0) {
-        const frameIndex = Math.min(g2State.refSpectra.length - 1, Math.floor(sweepProgress * g2State.refSpectra.length));
+        const latencySec = (latencyCalib.calibratedMs || 0) / 1000;
+        const targetProgress = Math.max(0, Math.min(1.0, (elapsedSec - latencySec) / g2State.refDurationSec));
+        const frameIndex = Math.min(g2State.refSpectra.length - 1, Math.floor(targetProgress * g2State.refSpectra.length));
         const refFrame = g2State.refSpectra[frameIndex];
 
         const refInfo = extractFastPitchAndNote(refFrame);

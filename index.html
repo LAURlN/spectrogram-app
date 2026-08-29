@@ -137,6 +137,9 @@
             <select id="audioDeviceSelect" class="form-select">
               <option value="">Default Microphone</option>
             </select>
+            <button type="button" class="btn btn-secondary btn-sm fix-mic-btn" id="fixMicBtn" title="Force re-initialize microphone & audio pipeline">
+              <span>⚠️ Mic doesn't work? Reset</span>
+            </button>
           </div>
 
           <div class="control-group">
@@ -538,6 +541,16 @@
             <button class="btn btn-secondary" id="g2ResetBtn" title="Reset Game & Clear Recordings">
               <span>🔄 Reset</span>
             </button>
+            <button class="btn btn-accent" id="g2CalibrateLatencyBtn" title="Calibrate Audio Latency">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span id="g2CalibrateLatencyBtnText">⏱️ Calibrate Latency</span>
+            </button>
+            <button class="btn btn-secondary btn-sm fix-mic-btn-g2" id="g2FixMicBtn" title="Force re-initialize microphone & audio pipeline">
+              <span>⚠️ Mic doesn't work?</span>
+            </button>
           </div>
         </header>
 
@@ -568,6 +581,10 @@
               <div class="score-bar-track">
                 <div id="g2ScoreBarFill" class="score-bar-fill"></div>
               </div>
+            </div>
+            <div class="latency-badge-card" id="latencyBadgeCard">
+              <span class="latency-badge-label">AUDIO LATENCY</span>
+              <span class="latency-badge-value" id="latencyBadgeValue">Not Calibrated</span>
             </div>
           </div>
 
@@ -655,6 +672,73 @@
       <div class="wizard-footer">
         <button class="btn btn-secondary" id="cancelCalibBtn">Cancel</button>
         <button class="btn btn-primary" id="startCalibStepBtn">Start Phase 1 (Quiet 2s)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Latency Calibration Modal -->
+  <div class="modal-overlay hidden" id="latencyCalibModal">
+    <div class="modal-card latency-calib-modal">
+      <button class="modal-close" id="latencyCalibCloseBtn">&times;</button>
+      <div class="wizard-header">
+        <div class="wizard-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#latency_grad)" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+            <defs>
+              <linearGradient id="latency_grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#00F0FF"/>
+                <stop offset="1" stop-color="#7B61FF"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h2>Audio Latency Calibration</h2>
+        <span class="wizard-step-tag" id="latencyCalibStepTag">Preparation</span>
+      </div>
+
+      <div class="wizard-body">
+        <div class="latency-calib-instructions" id="latencyCalibInstructions">
+          <div class="latency-instruction-icon">🔊🎤</div>
+          <h3 id="latencyCalibTitle">Hold your speaker next to the microphone</h3>
+          <p id="latencyCalibDesc">Place your headphones, phone speaker, or Bluetooth speaker right next to (or touching) the microphone. The app will play 5 short beeps and measure how long each takes to reach the mic.</p>
+        </div>
+
+        <div class="latency-calib-progress" id="latencyCalibProgress" style="display:none;">
+          <div class="latency-round-indicator">
+            <span class="latency-round-label">Round</span>
+            <span class="latency-round-current" id="latencyRoundCurrent">1</span>
+            <span class="latency-round-of">of 5</span>
+          </div>
+
+          <div class="latency-beep-status" id="latencyBeepStatus">
+            <div class="beep-pulse-ring" id="beepPulseRing"></div>
+            <span id="latencyBeepStatusText">Waiting...</span>
+          </div>
+
+          <div class="latency-rounds-list" id="latencyRoundsList">
+            <div class="latency-round-row" data-round="1"><span class="round-num">#1</span><span class="round-value" id="latencyRound1Val">—</span></div>
+            <div class="latency-round-row" data-round="2"><span class="round-num">#2</span><span class="round-value" id="latencyRound2Val">—</span></div>
+            <div class="latency-round-row" data-round="3"><span class="round-num">#3</span><span class="round-value" id="latencyRound3Val">—</span></div>
+            <div class="latency-round-row" data-round="4"><span class="round-num">#4</span><span class="round-value" id="latencyRound4Val">—</span></div>
+            <div class="latency-round-row" data-round="5"><span class="round-num">#5</span><span class="round-value" id="latencyRound5Val">—</span></div>
+          </div>
+        </div>
+
+        <div class="latency-calib-result" id="latencyCalibResult" style="display:none;">
+          <div class="latency-result-icon">✅</div>
+          <h3>Calibration Complete</h3>
+          <div class="latency-result-value">
+            <span class="latency-result-number" id="latencyResultMs">0</span>
+            <span class="latency-result-unit">ms</span>
+          </div>
+          <p class="latency-result-note">This latency offset will be applied to all subsequent attempts for accurate scoring.</p>
+        </div>
+      </div>
+
+      <div class="wizard-footer">
+        <button class="btn btn-secondary" id="latencyCalibCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="latencyCalibStartBtn">Start Calibration</button>
       </div>
     </div>
   </div>

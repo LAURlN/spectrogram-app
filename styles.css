@@ -2047,3 +2047,287 @@ input[type="range"]::-webkit-slider-thumb:hover {
   color: var(--text-muted);
   line-height: 1.5;
 }
+
+/* --- Latency Badge Card (Score Divider) --- */
+.latency-badge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 18px;
+  background: rgba(18, 24, 38, 0.7);
+  border: 1px solid rgba(123, 97, 255, 0.25);
+  border-radius: var(--radius-md);
+  min-width: 140px;
+}
+
+.latency-badge-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.latency-badge-value {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.latency-badge-value.calibrated {
+  color: #7B61FF;
+  text-shadow: 0 0 10px rgba(123, 97, 255, 0.4);
+}
+
+/* --- Latency Calibration Modal --- */
+.latency-calib-modal {
+  max-width: 460px;
+}
+
+.latency-calib-instructions {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.latency-instruction-icon {
+  font-size: 2.8rem;
+  margin-bottom: 12px;
+  animation: latencyIconBounce 2s ease-in-out infinite;
+}
+
+@keyframes latencyIconBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.latency-calib-instructions h3 {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.latency-calib-instructions p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* Round Indicator */
+.latency-round-indicator {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.latency-round-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.latency-round-current {
+  font-family: var(--font-heading);
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #7B61FF;
+  text-shadow: 0 0 20px rgba(123, 97, 255, 0.5);
+  line-height: 1;
+}
+
+.latency-round-of {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* Beep Status + Pulse Ring */
+.latency-beep-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  position: relative;
+  min-height: 60px;
+  justify-content: center;
+}
+
+.beep-pulse-ring {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid rgba(123, 97, 255, 0.3);
+  position: relative;
+}
+
+.beep-pulse-ring.playing {
+  border-color: #00f0ff;
+  background: rgba(0, 240, 255, 0.15);
+  animation: beepPulse 0.3s ease-out;
+}
+
+.beep-pulse-ring.detected {
+  border-color: #00ff88;
+  background: rgba(0, 255, 136, 0.15);
+  animation: beepDetected 0.4s ease-out;
+}
+
+@keyframes beepPulse {
+  0% { transform: scale(0.8); opacity: 0.5; box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.6); }
+  50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 20px 8px rgba(0, 240, 255, 0.3); }
+  100% { transform: scale(1); opacity: 1; box-shadow: 0 0 10px 2px rgba(0, 240, 255, 0.15); }
+}
+
+@keyframes beepDetected {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.5); }
+  50% { transform: scale(1.15); box-shadow: 0 0 25px 10px rgba(0, 255, 136, 0.25); }
+  100% { transform: scale(1); box-shadow: 0 0 10px 2px rgba(0, 255, 136, 0.1); }
+}
+
+.beep-pulse-ring.listening {
+  border-color: #7B61FF;
+  animation: beepListening 1.2s ease-in-out infinite;
+}
+
+@keyframes beepListening {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 97, 255, 0.4); }
+  50% { box-shadow: 0 0 15px 6px rgba(123, 97, 255, 0.2); }
+}
+
+#latencyBeepStatusText {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* Rounds List */
+.latency-rounds-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.latency-round-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(18, 24, 38, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all var(--transition-fast);
+}
+
+.latency-round-row.active {
+  border-color: rgba(123, 97, 255, 0.4);
+  background: rgba(123, 97, 255, 0.08);
+}
+
+.latency-round-row.done {
+  border-color: rgba(0, 255, 136, 0.3);
+  background: rgba(0, 255, 136, 0.05);
+}
+
+.round-num {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.round-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.latency-round-row.done .round-value {
+  color: #00ff88;
+}
+
+/* Result Screen */
+.latency-calib-result {
+  text-align: center;
+  padding: 15px 0;
+}
+
+.latency-result-icon {
+  font-size: 2.8rem;
+  margin-bottom: 10px;
+}
+
+.latency-calib-result h3 {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  color: #fff;
+  margin-bottom: 16px;
+}
+
+.latency-result-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.latency-result-number {
+  font-family: var(--font-heading);
+  font-size: 3rem;
+  font-weight: 700;
+  color: #7B61FF;
+  text-shadow: 0 0 25px rgba(123, 97, 255, 0.5);
+  line-height: 1;
+}
+
+.latency-result-unit {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  color: var(--text-muted);
+}
+
+.latency-result-note {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+/* --- Fix Mic / Reset Audio Button --- */
+.fix-mic-btn {
+  border-color: rgba(255, 180, 0, 0.35) !important;
+  color: #ffcc66 !important;
+  background: rgba(255, 180, 0, 0.08) !important;
+  transition: all var(--transition-fast);
+}
+
+.fix-mic-btn:hover:not(:disabled) {
+  border-color: rgba(255, 180, 0, 0.7) !important;
+  background: rgba(255, 180, 0, 0.2) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(255, 180, 0, 0.25);
+}
+
+.fix-mic-btn-g2 {
+  border-color: rgba(255, 180, 0, 0.3) !important;
+  color: #ffcc66 !important;
+  background: rgba(255, 180, 0, 0.08) !important;
+}
+
+.fix-mic-btn-g2:hover:not(:disabled) {
+  border-color: rgba(255, 180, 0, 0.6) !important;
+  background: rgba(255, 180, 0, 0.2) !important;
+  color: #fff !important;
+}
+
